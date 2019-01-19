@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <Version>0.10.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="GenericDataTypes.fs" />
+    <Compile Include="MathAtom\Delimiter.fs" />
+    <Compile Include="MathAtom\MathAtom.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.5.4" />
+  </ItemGroup>
+
+</Project>
