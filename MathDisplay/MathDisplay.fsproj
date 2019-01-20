@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="GenericDataTypes.fs" />
-    <Compile Include="MathAtom\Delimiter.fs" />
+    <Compile Include="DataTypes\Structures.fs" />
+    <Compile Include="DataTypes\AliasMap.fs" />
     <Compile Include="MathAtom\MathAtom.fs" />
   </ItemGroup>
 

@@ -1,12 +1,11 @@
 namespace MathDisplay.MathAtom
-
-open MathDisplay
+open MathDisplay.DataTypes
 
 type MathAtom =
     | Row of MathAtom list
-    (*| Ordinary = *) | Number of chars | Variable of chars | UnaryOperator of chars
+    (*| Ordinary = *) | Number of chars | Variable of chars | UnaryOperator of unichar
     /// sin/cos, integral, etc.
-    | LargeOperator
+    | LargeOperator of chars
     | BinaryOperator of unichar
     | BinaryRelationalOperator of unichar
     | OpenBracket of unichar
@@ -24,9 +23,9 @@ type MathAtom =
     | Accented of MathAtom
     | Primes of count:int
     //| Boundary (changed to Delimiter)
-    | Space
+    | Space of Space
     ///Style changes during rendering
-    | Style
+    | Style of LineStyle
     | Colored of MathAtom * Color
     ///A table. Not part of TeX.
-    | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: XAlignment list
+    | Table of MathAtom list list * interColumnSpacing:Space * interRowAdditionalSpacing:Space * columnAlignments: XAlignment list
