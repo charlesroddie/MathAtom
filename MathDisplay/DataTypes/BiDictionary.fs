@@ -30,3 +30,6 @@ type BiDictionary<'A, 'B when 'A : comparison and 'B : comparison>() =
         backwardsD.Remove(v) |> ignore
         for k in forwardsD.Keys do
             if forwardsD.[k] = v then forwardsD.Remove(k) |> ignore
+    
+    member t.TryFindValue(k) = forwardsD.TryFind(k)
+    member t.TryFindKey(v) = backwardsD.TryFind(v)
