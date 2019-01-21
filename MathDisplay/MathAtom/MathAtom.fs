@@ -4,6 +4,7 @@ open MathDisplay
 
 type Accent = class end
 type Operator = class end
+type Style = class end
 
 type MathAtom =
     | Row of MathAtom list
@@ -30,7 +31,8 @@ type MathAtom =
     //| Boundary (changed to Delimiter)
     | Space of Space
     ///Style changes during rendering
-    | Styled of MathAtom * LineStyle
-    | Colored of MathAtom * System.Drawing.Color
+    | Styled of Style * MathAtom
+    | Text of string
+    | Colored of System.Drawing.Color * MathAtom
     ///A table. Not part of TeX.
     | Table of MathAtom list list * interColumnSpacing:Space * interRowAdditionalSpacing:Space * columnAlignments: Alignment list
