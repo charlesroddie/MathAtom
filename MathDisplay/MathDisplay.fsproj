@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Structures.fs" />
-    <Compile Include="Brackets.fs" />
-    <Compile Include="MathAtom.fs" />
+    <Compile Include="MathAtom\Structures.fs" />
+    <Compile Include="MathAtom\Brackets.fs" />
+    <Compile Include="MathAtom\MathAtom.fs" />
   </ItemGroup>
 
   <ItemGroup>
