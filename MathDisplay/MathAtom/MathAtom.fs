@@ -6,6 +6,8 @@ type Accent = class end
 type Operator = class end
 type Style = class end
 
+[<Measure>]type mu
+
 type MathAtom =
     | Row of MathAtom list
     (*| Ordinary = *)
@@ -29,10 +31,10 @@ type MathAtom =
     | Accented of MathAtom * Accent
     | Primes of count:int
     //| Boundary (changed to Delimiter)
-    | Space of Space
+    | Space of float<mu>
     ///Style changes during rendering
     | Styled of Style * MathAtom
     | Text of string
     | Colored of System.Drawing.Color * MathAtom
     ///A table. Not part of TeX.
-    | Table of MathAtom list list * interColumnSpacing:Space * interRowAdditionalSpacing:Space * columnAlignments: Alignment list
+    | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list
