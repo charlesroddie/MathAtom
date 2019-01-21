@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="DataTypes\Structures.fs" />
-    <Compile Include="DataTypes\AliasMap.fs" />
-    <Compile Include="MathAtom\MathAtom.fs" />
+    <Compile Include="Structures.fs" />
+    <Compile Include="Brackets.fs" />
+    <Compile Include="MathAtom.fs" />
   </ItemGroup>
 
   <ItemGroup>
