@@ -1,6 +1,5 @@
 namespace MathDisplay.MathAtom
 open MathDisplay.DataTypes
-open MathDisplay
 
 type Accent = class end
 type Operator = class end
@@ -10,7 +9,7 @@ type Style = class end
 
 type MathAtom =
     | Row of MathAtom list
-    (*| Ordinary = *)
+    (*| Ordinary = Number | Variable | UnaryOperator*)
     | Number of string
     | Variable of char
     | UnaryOperator of char
@@ -18,7 +17,9 @@ type MathAtom =
     | LargeOperator of Operator * lowerLimit:MathAtom * upperLimit:MathAtom
     | BinaryOperator of char
     | BinaryRelationalOperator of char
-    | Bracketed of LeftBracket option * MathAtom * RightBracket option
+    //Bracket characters, need not be balanced.
+    | LeftBracket of char
+    | RightBracket of char
     | Fraction of numerator:MathAtom * denominator:MathAtom * nXAlign:Alignment * dXAlign:Alignment * customRuleThickness:float option
     | Radical of degree:MathAtom option * radicand:MathAtom
     | Punctuation of char

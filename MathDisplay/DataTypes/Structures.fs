@@ -1,6 +1,16 @@
 ﻿namespace MathDisplay.DataTypes
 
-type Alignment = Left = 0 | Center = 1 | Right = 2
-type SpaceType = Points = 0 | MathUnits = 1
+[<Struct>] type Alignment = Left | Center | Right
+[<Struct>] type SpaceType = Points | MathUnits
 [<Struct>] type Space = { Length:float; SpaceType:SpaceType }
-type LineStyle = Display = 0 | Text = 1 | Script = 2 | ScriptScript = 3
+[<Struct>] type LineStyle = Display | Text | Script | ScriptScript
+type Bracket = // could make this an enum with unicode numbers
+    | Parenthesis
+    | Square
+    | Curly
+    | Line
+    | DoubleLine
+    | Angle
+    | Floor
+    | Ceil
+    | UCorner

@@ -12,9 +12,9 @@
 
   <ItemGroup>
     <Compile Include="DataTypes\AliasMap.fs" />
-    <Compile Include="DataTypes\Brackets.fs" />
     <Compile Include="DataTypes\Structures.fs" />
     <Compile Include="MathAtom\MathAtom.fs" />
+    <Compile Include="MathAtom\LaTeXDefaultMaps.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -71,3 +71,6 @@ module AliasMap =
     let tryFindKey value (AliasMap (_, v2k)) = Map.tryFind value v2k
     let tryFindValue key (AliasMap (k2v, _)) = Map.tryFind key k2v
     let toSeq (AliasMap(k2v, _)) = Map.toSeq k2v
+    /// Last item is the value, everything before that are keys, with the first one being the primary key you get by indexing with the value
+    let ofList list =
+        List.fold (fun map item -> let keys, value = List.splitAt (List.length item - 1) item in AliasMap.add keys value.[0] map) empty list
