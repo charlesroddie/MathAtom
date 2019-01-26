@@ -11,9 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="DataTypes\BiDictionary.fs" />
+    <Compile Include="DataTypes\AliasMap.fs" />
+    <Compile Include="DataTypes\Brackets.fs" />
     <Compile Include="DataTypes\Structures.fs" />
-    <Compile Include="MathAtom\Brackets.fs" />
     <Compile Include="MathAtom\MathAtom.fs" />
   </ItemGroup>
 
