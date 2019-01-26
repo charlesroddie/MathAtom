@@ -6,9 +6,14 @@
     <Version>0.10.0</Version>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>FS0104</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
+    <Compile Include="DataTypes\BiDictionary.fs" />
     <Compile Include="DataTypes\Structures.fs" />
-    <Compile Include="DataTypes\AliasMap.fs" />
+    <Compile Include="MathAtom\Brackets.fs" />
     <Compile Include="MathAtom\MathAtom.fs" />
   </ItemGroup>
 
