@@ -4,8 +4,9 @@ open MathDisplay.DataTypes
 type Accent = class end
 type Operator = class end
 type Style = class end
+[<Struct>] type Delimiter = Delimiter of string
 
-[<Measure>]type mu
+[<Measure>] type mu
 
 type MathAtom =
     | Row of MathAtom list
@@ -26,7 +27,7 @@ type MathAtom =
     | PlaceholderInput
     | Scripts of baseAtom:MathAtom * subscriptAtom: MathAtom option * superscriptAtom: MathAtom option
     | Offsetted of x:float * y:float
-    | Delimited of left:char * atom:MathAtom * right:char
+    | Delimited of left:Delimiter * atom:MathAtom * right:Delimiter
     | Underlined of MathAtom
     | Overlined of MathAtom
     | Accented of MathAtom * Accent

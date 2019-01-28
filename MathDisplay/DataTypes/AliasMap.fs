@@ -3,7 +3,8 @@
 type AliasMap<'Key, 'Value when 'Key : comparison and 'Value : comparison> =
     private AliasMap of Map<'Key, 'Value> * Map<'Value, 'Key> with
 
-    member this.Add key value = AliasMap.add key value this
+    member this.Add primaryKey keys value = AliasMap.add primaryKey keys value this
+    member this.AddMoreKeys keys value = AliasMap.addMoreKeys keys value this
     member this.ContainsKey key = AliasMap.containsKey key this
     member this.ContainsValue value = AliasMap.containsValue value this
     member this.Count = AliasMap.count this
@@ -40,13 +41,21 @@ type AliasMap<'Key, 'Value when 'Key : comparison and 'Value : comparison> =
 
 module AliasMap =
     let empty = AliasMap (Map.empty, Map.empty)
-    let add keys value (AliasMap (k2v, v2k)) =
+    let add primaryKey keys value (AliasMap (k2v, v2k)) =
         let k2v' = List.fold (fun map item -> Map.add item value map) k2v keys
         let v2k' =
-            match keys with
-            | primaryKey::_ when Map.containsKey value v2k |> not -> Map.add value primaryKey v2k
-            | _ -> v2k
+            if Map.containsKey value v2k then
+                v2k
+            else
+                Map.add value primaryKey v2k
         AliasMap (k2v', v2k')
+    let addMoreKeys keys value map =
+        let (AliasMap (k2v, v2k)) = map
+        if not <| Map.containsKey value v2k then
+            let k2v' = List.fold (fun map item -> Map.add item value map) k2v keys
+            AliasMap (k2v', v2k)
+        else
+            map
     let containsKey key (AliasMap (k2v, _)) = Map.containsKey key k2v
     let containsValue value (AliasMap (_, v2k)) = Map.containsKey value v2k
     let count (AliasMap (k2v, _)) = Map.count k2v
@@ -71,6 +80,6 @@ module AliasMap =
     let tryFindKey value (AliasMap (_, v2k)) = Map.tryFind value v2k
     let tryFindValue key (AliasMap (k2v, _)) = Map.tryFind key k2v
     let toSeq (AliasMap(k2v, _)) = Map.toSeq k2v
-    /// Last item is the value, everything before that are keys, with the first one being the primary key you get by indexing with the value
+    /// Takes a list of (Primary key you get by indexing with the value, Other keys, Value)
     let ofList list =
-        List.fold (fun map item -> let keys, value = List.splitAt (List.length item - 1) item in AliasMap.add keys value.[0] map) empty list
+        List.fold (fun map item -> let primaryKey, keys, value = item in AliasMap.add primaryKey keys value map) empty list
