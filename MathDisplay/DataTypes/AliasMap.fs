@@ -80,6 +80,14 @@ module AliasMap =
     let tryFindKey value (AliasMap (_, v2k)) = Map.tryFind value v2k
     let tryFindValue key (AliasMap (k2v, _)) = Map.tryFind key k2v
     let toSeq (AliasMap(k2v, _)) = Map.toSeq k2v
+    //Warning: List.map is not inline! If we replace (keysMap keys) with (List.map keyMap keys), then the calls to id when keyMap is id will not be eliminated!
+    let inline private ofListWtihKeyKeysValueMap keyMap keysMap valueMap list =
+        List.fold (fun map (primaryKey, keys, value) -> AliasMap.add (keyMap primaryKey) (keysMap keys) (valueMap value) map) empty list
     /// Takes a list of (Primary key you get by indexing with the value, Other keys, Value)
-    let ofList list =
-        List.fold (fun map item -> let primaryKey, keys, value = item in AliasMap.add primaryKey keys value map) empty list
+    let ofList list = ofListWtihKeyKeysValueMap id id id list
+    /// Takes a list of (Primary key you get by indexing with the value, Other keys, Value)
+    let ofListWithKeyMap keyMap list = ofListWtihKeyKeysValueMap keyMap (List.map keyMap) id list
+    /// Takes a list of (Primary key you get by indexing with the value, Other keys, Value)
+    let ofListWithValueMap valueMap list = ofListWtihKeyKeysValueMap id id valueMap list
+    /// Takes a list of (Primary key you get by indexing with the value, Other keys, Value)
+    let ofListWithKeyValueMap keyMap valueMap list = ofListWtihKeyKeysValueMap keyMap (List.map keyMap) valueMap list
