@@ -15,6 +15,7 @@
     <Compile Include="DataTypes\Structures.fs" />
     <Compile Include="MathAtom\MathAtom.fs" />
     <Compile Include="MathAtom\LaTeXDefaultMaps.fs" />
+    <Compile Include="MathAtom\LaTeX.fsx" />
   </ItemGroup>
 
   <ItemGroup />

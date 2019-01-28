@@ -9,6 +9,7 @@ type Style = class end
 [<Measure>] type mu
 
 type MathAtom =
+    | TestResult___ of string
     | Row of MathAtom list
     (*| Ordinary = Number | Variable | UnaryOperator*)
     | Number of string
@@ -26,7 +27,9 @@ type MathAtom =
     | Radical of degree:MathAtom option * radicand:MathAtom
     | Punctuation of char
     | PlaceholderInput
-    | Scripts of baseAtom:MathAtom * subscriptAtom: MathAtom option * superscriptAtom: MathAtom option
+    //Scripts of previous atom
+    | Superscript of MathAtom
+    | Subscript of MathAtom
     | Offsetted of x:float * y:float
     | Delimited of left:Delimiter * atom:MathAtom * right:Delimiter
     | Underlined of MathAtom
