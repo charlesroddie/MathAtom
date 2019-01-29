@@ -4,7 +4,7 @@ open MathDisplay.DataTypes
 
 //Use (Alt+Left mouse) drag to create multiple cursors so that spaces can be inputted simultaneously
 let delimiters =
-    [".",           [],            "" // . means no delimiter
+   [".",           [],            "" // . means no delimiter
     "(",           [],            "("
     ")",           [],            ")"
     "[",           [],            "["
@@ -34,11 +34,11 @@ let delimiters =
 
 let matrixEnvironments =
     ["matrix",  [], ("", "")
-        "pmatrix", [], ("(", ")")
-        "bmatrix", [], ("[", "]")
-        "Bmatrix", [], ("{", "}")
-        "vmatrix", [], ("|", "|")
-        "Vmatrix", [], ("||", "||")]
+     "pmatrix", [], ("(", ")")
+     "bmatrix", [], ("[", "]")
+     "Bmatrix", [], ("{", "}")
+     "vmatrix", [], ("|", "|")
+     "Vmatrix", [], ("||", "||")]
     |> AliasMap.ofListWithValueMap (fun (l, r) -> (Option.get delimiters.[l], Option.get delimiters.[r]))
 
 let charToAtom c =
