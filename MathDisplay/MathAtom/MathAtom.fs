@@ -17,14 +17,14 @@ type MathAtom =
     | UnaryOperator of char
     | Ordinary of string
     /// sin/cos, integral, etc.
-    | LargeOperator of Operator * lowerLimit:MathAtom * upperLimit:MathAtom
+    | LargeOperator of Operator * lowerLimit:MathAtom voption * upperLimit:MathAtom voption
     | BinaryOperator of char
     | BinaryRelationalOperator of char
     //Bracket characters, need not be balanced.
     | OpenBracket of char
     | CloseBracket of char
-    | Fraction of numerator:MathAtom * denominator:MathAtom * nXAlign:Alignment * dXAlign:Alignment * customRuleThickness:float option
-    | Radical of degree:MathAtom option * radicand:MathAtom
+    | Fraction of numerator:MathAtom * denominator:MathAtom * nXAlign:Alignment * dXAlign:Alignment * customRuleThickness:float voption
+    | Radical of degree:MathAtom voption * radicand:MathAtom
     | Punctuation of char
     | PlaceholderInput
     //Scripts of previous atom
