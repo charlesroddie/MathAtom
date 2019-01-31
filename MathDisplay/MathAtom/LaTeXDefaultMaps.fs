@@ -56,3 +56,7 @@ let charToAtom c =
     | '-' | '\u2212' -> BinaryOperator '\u2212' |> ValueSome // use the math minus sign
     | '.' -> string c |> Number |> ValueSome
     | '"' | '/' | '@' | '`' | '|' | _ -> string c |> Ordinary |> ValueSome
+
+type LaTeXOptions = {
+    Delimiters: AliasMap<string, Delimiter>
+}
