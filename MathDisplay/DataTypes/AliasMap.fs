@@ -42,7 +42,9 @@ type AliasMap<'Key, 'Value when 'Key : comparison and 'Value : comparison> =
 module AliasMap =
     let empty = AliasMap (Map.empty, Map.empty)
     let add primaryKey keys value (AliasMap (k2v, v2k)) =
-        let k2v' = List.fold (fun map item -> Map.add item value map) k2v keys
+        let k2v' =
+            List.fold (fun map item -> Map.add item value map) k2v keys
+            |> Map.add primaryKey value
         let v2k' =
             if Map.containsKey value v2k then
                 v2k

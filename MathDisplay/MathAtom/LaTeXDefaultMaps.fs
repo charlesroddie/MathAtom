@@ -3,6 +3,7 @@
 open MathDisplay.DataTypes
 
 //Use (Alt+Left mouse) drag to create multiple cursors so that spaces can be inputted simultaneously
+[<CompiledName "Delimiters">]
 let delimiters =
    [".",           [],            "" // . means no delimiter
     "(",           [],            "("
@@ -32,8 +33,9 @@ let delimiters =
         
     |> AliasMap.ofListWithValueMap Delimiter
 
+[<CompiledName "MatrixEnvironments">]
 let matrixEnvironments =
-    ["matrix",  [], ("", "")
+    ["matrix",  [], (".", ".")
      "pmatrix", [], ("(", ")")
      "bmatrix", [], ("[", "]")
      "Bmatrix", [], ("{", "}")
@@ -41,6 +43,7 @@ let matrixEnvironments =
      "Vmatrix", [], ("||", "||")]
     |> AliasMap.ofListWithValueMap (fun (l, r) -> (Option.get delimiters.[l], Option.get delimiters.[r]))
 
+[<CompiledName "CharToAtom">]
 let charToAtom c =
     let (|Space|_|) s = if System.Char.IsControl s || System.Char.IsWhiteSpace s then Some Space else None
     match c with
@@ -56,7 +59,3 @@ let charToAtom c =
     | '-' | '\u2212' -> BinaryOperator '\u2212' |> ValueSome // use the math minus sign
     | '.' -> string c |> Number |> ValueSome
     | '"' | '/' | '@' | '`' | '|' | _ -> string c |> Ordinary |> ValueSome
-
-type LaTeXOptions = {
-    Delimiters: AliasMap<string, Delimiter>
-}

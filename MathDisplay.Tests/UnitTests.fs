@@ -15,8 +15,9 @@ type TestClass () =
 
     [<Test>]
     member __.``Gather output`` () =
+        let fff = MathDisplay.DataTypes.List.partitionWhile ((=) 'a') ['a'; 'a'; 'a'; 'a'; 'b'; 'c']
         let x =
-            "^_{\1 23''}^_"
-            |> LaTeX.toAtom
+            @"\left{\1 23''\right}"
+            |> LaTeX.toAtom LaTeX.Options.Default
         (match x with Ok r -> r | Error e -> InfoException e |> raise).ToString() |>
-        Assert.Inconclusive
+        Assert.Pass
