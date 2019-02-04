@@ -16,6 +16,7 @@ type Options = {
 
 let toAtom (settings: Options) latex =
     let errorArgMissing = Error "Unexpected end of input, missing argument"
+    let inline errorDelimMissing cmd = Error (cmd + " was not found in delimiter map")
     let inline collapse xs = match xs with [x] -> x | x -> Row x
     let inline skipSpaces cs = List.skipWhile System.Char.IsWhiteSpace cs
     let inline (|Alphabet|NonAlphabet|) c = if ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') then Alphabet else NonAlphabet
@@ -23,7 +24,7 @@ let toAtom (settings: Options) latex =
     let inline (|CommandName|) cs = match cs with
                                     | (NonAlphabet & c)::cs -> string c, cs
                                     | PartitionAlphabets (ab, cs) -> System.String.Concat ab, skipSpaces cs
-    let rec read until cs list =
+    let rec read inTable until cs list =
         let inline RETURN cs list = (cs, List.rev list) |> Ok
         ///Reads a delimiter
         let inline readDelimiter cs =
@@ -33,12 +34,12 @@ let toAtom (settings: Options) latex =
                 let cmd = match cmd with "|" -> "||" | _ -> cmd
                 match AliasMap.tryFindValue cmd settings.Delimiters with
                 | Some v -> Ok (v, cs)
-                | None -> Error (cmd + " was not found in delimiter map")
+                | None -> errorDelimMissing cmd
             | c::cs ->
                 let c = string c
                 match AliasMap.tryFindValue c settings.Delimiters with
                 | Some v -> Ok (v, cs)
-                | None -> Error (c + " was not found in delimiter map")
+                | None -> errorDelimMissing c
         ///Reads an environment
         let inline readEnvironment cs =
             match cs with
@@ -47,23 +48,30 @@ let toAtom (settings: Options) latex =
             | _ -> "Invalid environment, contains non-A-to-Z characters: " + System.String.Concat cs |> Error
         ///Reads an argument that is a block and applies it to the functions provided
         let inline readBlock until atomMaker useAtom cs =
-            read until cs list |> Result.bind (fun (cs, arg) -> atomMaker arg |> useAtom cs)
+            read inTable until cs list |> Result.bind (fun (cs, arg) -> atomMaker arg |> useAtom cs)
         ///Reads an optional argument and returns it, cs should start with '[' to be recognized
         let inline readOption cs =
             match cs with
             | '['::cs -> readBlock (Until ']') collapse (fun cs atom -> (cs, atom) |> ValueSome |> Ok) cs
             | _ -> Ok ValueNone
-        ///Command has (N+1) arguments
+        let inline readTable cs =
+            let rec innerReadTable rows currentRow cs =
+                read true until cs list |> Result.bind (fun (cs, atoms) ->
+                    let atom = collapse atoms
+                    match cs with
+                    | '&'::cs -> innerReadTable 
+                )
+        ///Processes (N+1) arguments, then continues reading
         let inline argPlus1 argN cs atomMaker = readBlock OneArgument (collapse >> atomMaker) argN cs
-        ///Command has 0 arguments
+        ///Processes 0 arguments, then continues reading
         let inline arg0 cs atom =
             let list = atom::list
             match until with
             | OneArgument -> (cs, List.rev list) |> Ok
             | _ -> read until cs list
-        ///Command has 1 argument
+        ///Processes 1 argument, then continues reading
         let arg1 = argPlus1 arg0
-        ///Command has 2 arguments
+        ///Processes 2 arguments, then continues reading
         let arg2 = argPlus1 arg1
         
         //* No Ok nor read in this function after this point or you risk ImplementationHasUnreadCharactersException *
@@ -72,15 +80,44 @@ let toAtom (settings: Options) latex =
         match skipSpaces cs with
         | [] ->
             match until with
-            | All -> RETURN [] list
+            | All | TableRow -> RETURN [] list
             | OneArgument -> errorArgMissing
-            | UntilRightDelimiter -> "Missing \\right" |> Error
+            | UntilRightDelimiter -> @"Missing \right" |> Error
             | Until '}' -> "Missing closing brace" |> Error
             | Until c -> "Expected character not found: " + c.ToString() |> Error
         | c::cs when (match until with Until u -> c = u | _ -> false) -> RETURN cs list
         | '\\'::(CommandName (cmd, cs)) ->
+            let inline infixFracCmd hasRule cs delim =
+                match readBlock until collapse (fun cs atom -> Ok(struct(cs, atom))) cs with
+                | Ok (struct(cs, denom)) ->
+                    let numer = List.rev list
+                    let frac =
+                        Fraction (numer, denom, Center, Center, if hasRule then ValueNone else ValueSome 0.)
+                    match delim with
+                    | ValueSome struct(left, right) ->
+                        match settings.Delimiters.[left] with
+                        | Some left ->
+                            match settings.Delimiters.[right] with
+                            | Some right -> Delimited (left, frac, right) |> Ok
+                            | None -> errorDelimMissing right
+                        | None -> errorDelimMissing left
+                    | ValueNone -> frac |> Ok
+                | Error e -> Error e
             match cmd with
             | "1" -> TestResult___ "It's 1!" |> arg0 cs
+            //Commands that return
+            | "right" -> match until with
+                         | UntilRightDelimiter -> RETURN cs list
+                         | _ -> Error @"Missing \left"
+            | "over" -> ValueNone |> infixFracCmd true cs
+            | "atop" -> ValueNone |> infixFracCmd false cs
+            | "choose" -> ValueSome struct("(", ")") |> infixFracCmd false cs
+            | "brack" -> ValueSome struct("[", "]") |> infixFracCmd false cs
+            | "brace" -> ValueSome struct("{", "}") |> infixFracCmd false cs
+            | "atopwithdelims" ->
+                readDelimiter cs |> Result.bind (fun (left, cs) ->
+                readDelimiter cs |> Result.bind (fun (right, cs) ->
+                ValueSome(struct(left, right)) |> infixFracCmd cs))
             | "frac" -> (fun n d -> Fraction (n, d, Center, Center, ValueNone)) |> arg2 cs
             | "binom" -> (fun n d -> Fraction (n, d, Center, Center, ValueSome 0.)) |> arg2 cs
             | "sqrt" -> match readOption cs with
@@ -95,16 +132,12 @@ let toAtom (settings: Options) latex =
                                | Error e -> Error e
                             ) cs
                         | Error e -> Error e
-            | "right" -> match until with
-                         | UntilRightDelimiter -> RETURN cs list
-                         | _ -> Error "Missing \\left"
             | "overline" -> arg1 cs Overlined
             | "underline" -> arg1 cs Underlined
             | "begin" -> match readEnvironment cs with
-                         | Ok (env, cs) ->
-                            
+                         | Ok (env, cs) -> failwith "not implemented"
                          | Error e -> Error e
-            | _ -> "Unrecognized command: \\" + cmd |> Error
+            | _ -> @"Unrecognized command: \" + cmd |> Error
         | '^'::cs -> arg1 cs Superscript
         | '_'::cs -> arg1 cs Subscript
         | '{'::cs -> readBlock (Until '}') Row arg0 cs
