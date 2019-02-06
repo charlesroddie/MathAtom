@@ -25,8 +25,7 @@ let toAtom (settings: Options) latex =
     let inline (|CommandName|) cs = match cs with
                                     | (NonAlphabet & c)::cs -> string c, cs
                                     | PartitionAlphabets (ab, cs) -> System.String.Concat ab, skipSpaces cs
-    let rec read tableEnv until cs list =
-        let inline RETURN tableEnv cs list = (tableEnv, cs, List.rev list) |> Ok
+    let rec read (tableEnv:TableEnvironment voption) until cs list =
         ///Reads a delimiter
         let readDelimiter cs =
             match cs with
@@ -49,80 +48,71 @@ let toAtom (settings: Options) latex =
             | _ -> "Invalid environment, contains non-A-to-Z characters: " + System.String.Concat cs |> Error
         ///Reads an argument that is a block and applies it to the functions provided
         let inline readBlock until atomMaker useAtom cs =
-            read tableEnv until cs list |> Result.bind (fun (cs, arg) -> atomMaker arg |> useAtom cs)
+            read tableEnv until cs list |> Result.bind (fun (_, cs, arg) -> atomMaker arg |> useAtom cs)
         ///Reads an optional argument and returns it, cs should start with '[' to be recognized
         let readOption cs =
             match cs with
             | '['::cs -> readBlock (Until ']') collapse (fun cs atom -> (cs, atom) |> ValueSome |> Ok) cs
             | _ -> Ok ValueNone
-        let readTable name cs =
-            let rec innerReadTable rows currentRow cs =
-                read (ValueSome { Name = name; Ended = false; NumRows = 0 }) until cs list
-                |> Result.bind (fun (cs, atoms) ->
-                    let atom = collapse atoms
-                    match cs with
-                    | '&'::cs -> innerReadTable 
-                )
+        let readTable name cs = Error "ghvgjhkjnlbvgcfy"
+            //let rec innerReadTable rows currentRow cs =
+                //read (ValueSome { Name = name; Ended = false; NumRows = 0 }) until cs list
+                //|> Result.bind (fun (cs, atoms) ->
+                //    let atom = collapse atoms
+                //    match cs with
+                //    | '&'::cs -> innerReadTable 
+                //)
         ///Processes (N+1) arguments, then continues reading
         let inline argPlus1 argN cs atomMaker = readBlock OneArgument (collapse >> atomMaker) argN cs
         ///Processes 0 arguments, then continues reading
         let inline arg0 cs atom =
-            let list = atom::list
-            match until with
-            | OneArgument -> RETURN tableEnv cs list
-            | _ -> read tableEnv until cs list
+            match until with OneArgument -> (tableEnv, cs, atom::list) |> Ok | _ -> read tableEnv until cs (atom::list)
         ///Processes 1 argument, then continues reading
         let arg1 = argPlus1 arg0
         ///Processes 2 arguments, then continues reading
         let arg2 = argPlus1 arg1
-        
-        //* No Ok nor read in this function after this point or you risk ImplementationHasUnreadCharactersException *
-        //* Use the arg functions, or if really necessary, RETURN! *
+
+        //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
+        //* Use the arg functions!
 
         match skipSpaces cs with
         | [] ->
             match until with
-            | All | TableRow -> RETURN tableEnv [] list
+            | All -> (tableEnv, [], list) |> Ok
             | OneArgument -> errorArgMissing
             | UntilRightDelimiter -> @"Missing \right" |> Error
             | Until '}' -> "Missing closing brace" |> Error
             | Until c -> "Expected character not found: " + c.ToString() |> Error
-        | c::cs when (match until with Until u -> c = u | _ -> false) -> RETURN tableEnv cs list
+        | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, list) |> Ok
         | '\\'::(CommandName (cmd, cs)) ->
-            let inline infixFracCmd hasRule cs delim =
+            let infixFracCmd hasRule cs delims =
                 match readBlock until collapse (fun cs atom -> Ok(struct(cs, atom))) cs with
                 | Ok (struct(cs, denom)) ->
-                    let numer = List.rev list
-                    let frac =
-                        Fraction (numer, denom, Center, Center, if hasRule then ValueNone else ValueSome 0.)
-                    match delim with
-                    | ValueSome struct(left, right) ->
-                        match settings.Delimiters.[left] with
-                        | Some left ->
-                            match settings.Delimiters.[right] with
-                            | Some right -> Delimited (left, frac, right) |> Ok
-                            | None -> errorDelimMissing right
-                        | None -> errorDelimMissing left
-                    | ValueNone -> frac |> Ok
+                    let numer = List.rev list |> collapse
+                    let frac = Fraction (numer, denom, Center, Center, if hasRule then ValueNone else ValueSome 0.)
+                    match delims with
+                    | ValueSome struct(left, right) -> Delimited (left, frac, right)
+                    | ValueNone -> frac
+                    |> arg0 cs
                 | Error e -> Error e
             match cmd with
             | "1" -> TestResult___ "It's 1!" |> arg0 cs
             //Commands that return
             | "right" -> match until with
-                         | UntilRightDelimiter -> RETURN tableEnv cs list
+                         | UntilRightDelimiter -> (tableEnv, cs, list) |> Ok
                          | _ -> Error @"Missing \left"
             | "over" -> ValueNone |> infixFracCmd true cs
             | "atop" -> ValueNone |> infixFracCmd false cs
-            | "choose" -> ValueSome struct("(", ")") |> infixFracCmd false cs
-            | "brack" -> ValueSome struct("[", "]") |> infixFracCmd false cs
-            | "brace" -> ValueSome struct("{", "}") |> infixFracCmd false cs
+            | "choose" -> ValueSome struct(Delimiter "(", Delimiter ")") |> infixFracCmd false cs
+            | "brack" -> ValueSome struct(Delimiter "[", Delimiter "]") |> infixFracCmd false cs
+            | "brace" -> ValueSome struct(Delimiter "{", Delimiter "}") |> infixFracCmd false cs
             | "atopwithdelims" ->
                 readDelimiter cs |> Result.bind (fun (left, cs) ->
                 readDelimiter cs |> Result.bind (fun (right, cs) ->
-                ValueSome(struct(left, right)) |> infixFracCmd cs))
+                ValueSome(struct(left, right)) |> infixFracCmd false cs))
             | @"\" | "cr" ->
                 match tableEnv with
-                | ValueSome env -> RETURN { env with NumRows = env.NumRows + 1 } cs list
+                | ValueSome env -> (ValueSome { env with NumRows = env.NumRows + 1 }, cs, list) |> Ok
                 | ValueNone -> readTable ValueNone cs
             | "frac" -> (fun n d -> Fraction (n, d, Center, Center, ValueNone)) |> arg2 cs
             | "binom" -> (fun n d -> Fraction (n, d, Center, Center, ValueSome 0.)) |> arg2 cs
@@ -154,8 +144,12 @@ let toAtom (settings: Options) latex =
             let primes, cs = List.partitionWhile ((=) '\'') cs //primes do not include the one already matched
             List.length primes + 1 |> Primes |> arg0 cs
         | c::cs -> string c |> Ordinary |> arg0 cs
-
+        |> Result.map (fun (tableEnv, cs, list) -> tableEnv, cs, List.rev list)
     match read ValueNone All (List.ofSeq latex) [] with
-    | Ok ([], atoms) -> collapse atoms |> Ok
+    | Ok (ValueNone, [], atoms)
+    | Ok (ValueSome { Name = ValueNone }, [], atoms) ->
+        collapse atoms |> Ok
+    | Ok (ValueSome { Name = ValueSome envName }, [], _) ->
+        (@"Missing \end{" + envName + "}") |> Error
     | Error e -> Error e
-    | Ok (unreadChars, atoms) -> ImplementationHasUnreadCharactersException (latex, unreadChars, atoms) |> raise
+    | Ok (_, unreadChars, atoms) -> ImplementationHasUnreadCharactersException (latex, unreadChars, atoms) |> raise
