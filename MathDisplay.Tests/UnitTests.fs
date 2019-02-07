@@ -17,7 +17,7 @@ type TestClass () =
     member __.``Gather output`` () =
         let fff = MathDisplay.DataTypes.List.partitionWhile ((=) 'a') ['a'; 'a'; 'a'; 'a'; 'b'; 'c']
         let x =
-            @"\left{\1 23''\right}"
+            @"123"
             |> LaTeX.toAtom LaTeX.Options.Default
         (match x with Ok r -> r | Error e -> InfoException e |> raise).ToString() |>
         Assert.Pass

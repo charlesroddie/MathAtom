@@ -17,20 +17,20 @@ exception ImplementationHasUnreadCharactersException of InputLaTeX:string * Unre
 
 let toAtom (settings: Options) latex =
     let errorArgMissing = Error "Unexpected end of input, missing argument"
-    let inline errorDelimMissing cmd = Error (cmd + " was not found in delimiter map")
-    let inline collapse xs = match xs with [x] -> x | x -> Row x
-    let inline skipSpaces cs = List.skipWhile System.Char.IsWhiteSpace cs
-    let inline (|Alphabet|NonAlphabet|) c = if ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') then Alphabet else NonAlphabet
-    let inline (|PartitionAlphabets|) cs = List.partitionWhile (function Alphabet -> true | NonAlphabet -> false) cs
-    let inline (|CommandName|) cs = match cs with
-                                    | (NonAlphabet & c)::cs -> string c, cs
-                                    | PartitionAlphabets (ab, cs) -> System.String.Concat ab, skipSpaces cs
-    let rec read (tableEnv:TableEnvironment voption) until cs list =
+    let errorDelimMissing cmd = Error (cmd + " was not found in delimiter map")
+    let collapse xs = match xs with [x] -> x | x -> Row x
+    let skipSpaces cs = List.skipWhile System.Char.IsWhiteSpace cs
+    let isAlphabet c = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+    let (|PartitionAlphabets|) cs = List.partitionWhile isAlphabet cs
+    let (|CommandName|) cs = match cs with
+                             | c::cs when not <| isAlphabet c -> string c, cs
+                             | PartitionAlphabets (ab, cs) -> System.String.Concat ab, skipSpaces cs
+    let rec read tableEnv until cs list =
         ///Reads a delimiter
         let readDelimiter cs =
             match cs with
             | [] -> errorArgMissing
-            | '\\'::(CommandName (cmd, cs)) ->
+            | '\\'::CommandName(cmd, cs) ->
                 let cmd = match cmd with "|" -> "||" | _ -> cmd
                 match AliasMap.tryFindValue cmd settings.Delimiters with
                 | Some v -> Ok (v, cs)
@@ -47,8 +47,8 @@ let toAtom (settings: Options) latex =
             | c::cs -> Ok (string c, cs) //Seems allowed by LaTeX?
             | _ -> "Invalid environment, contains non-A-to-Z characters: " + System.String.Concat cs |> Error
         ///Reads an argument that is a block and applies it to the functions provided
-        let inline readBlock until atomMaker useAtom cs =
-            read tableEnv until cs list |> Result.bind (fun (_, cs, arg) -> atomMaker arg |> useAtom cs)
+        let readBlock until atomMaker useAtom cs =
+            read tableEnv until cs [] |> Result.bind (fun (_, cs, arg) -> atomMaker arg |> useAtom cs)
         ///Reads an optional argument and returns it, cs should start with '[' to be recognized
         let readOption cs =
             match cs with
@@ -65,8 +65,11 @@ let toAtom (settings: Options) latex =
         ///Processes (N+1) arguments, then continues reading
         let inline argPlus1 argN cs atomMaker = readBlock OneArgument (collapse >> atomMaker) argN cs
         ///Processes 0 arguments, then continues reading
-        let inline arg0 cs atom =
-            match until with OneArgument -> (tableEnv, cs, atom::list) |> Ok | _ -> read tableEnv until cs (atom::list)
+        let arg0 cs atom =
+            let list = atom::list
+            match until with
+            | OneArgument -> (tableEnv, cs, list) |> Ok
+            | _ -> read tableEnv until cs list
         ///Processes 1 argument, then continues reading
         let arg1 = argPlus1 arg0
         ///Processes 2 arguments, then continues reading
@@ -78,28 +81,28 @@ let toAtom (settings: Options) latex =
         match skipSpaces cs with
         | [] ->
             match until with
-            | All -> (tableEnv, [], list) |> Ok
+            | All -> (tableEnv, [], List.rev list) |> Ok
             | OneArgument -> errorArgMissing
             | UntilRightDelimiter -> @"Missing \right" |> Error
             | Until '}' -> "Missing closing brace" |> Error
             | Until c -> "Expected character not found: " + c.ToString() |> Error
-        | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, list) |> Ok
-        | '\\'::(CommandName (cmd, cs)) ->
+        | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, List.rev list) |> Ok
+        | '\\'::CommandName (cmd, cs) ->
             let infixFracCmd hasRule cs delims =
-                match readBlock until collapse (fun cs atom -> Ok(struct(cs, atom))) cs with
-                | Ok (struct(cs, denom)) ->
+                match readBlock until collapse (fun cs atom -> Ok struct(cs, atom)) cs with
+                | Ok struct(cs, denom) ->
                     let numer = List.rev list |> collapse
                     let frac = Fraction (numer, denom, Center, Center, if hasRule then ValueNone else ValueSome 0.)
-                    match delims with
-                    | ValueSome struct(left, right) -> Delimited (left, frac, right)
-                    | ValueNone -> frac
-                    |> arg0 cs
+                    Ok (tableEnv, cs,
+                        [match delims with
+                         | ValueSome struct(left, right) -> yield Delimited (left, frac, right)
+                         | ValueNone -> yield frac])
                 | Error e -> Error e
             match cmd with
             | "1" -> TestResult___ "It's 1!" |> arg0 cs
             //Commands that return
             | "right" -> match until with
-                         | UntilRightDelimiter -> (tableEnv, cs, list) |> Ok
+                         | UntilRightDelimiter -> (tableEnv, cs, List.rev list) |> Ok
                          | _ -> Error @"Missing \left"
             | "over" -> ValueNone |> infixFracCmd true cs
             | "atop" -> ValueNone |> infixFracCmd false cs
@@ -112,8 +115,9 @@ let toAtom (settings: Options) latex =
                 ValueSome(struct(left, right)) |> infixFracCmd false cs))
             | @"\" | "cr" ->
                 match tableEnv with
-                | ValueSome env -> (ValueSome { env with NumRows = env.NumRows + 1 }, cs, list) |> Ok
+                | ValueSome env -> (ValueSome { env with NumRows = env.NumRows + 1 }, cs, List.rev list) |> Ok
                 | ValueNone -> readTable ValueNone cs
+
             | "frac" -> (fun n d -> Fraction (n, d, Center, Center, ValueNone)) |> arg2 cs
             | "binom" -> (fun n d -> Fraction (n, d, Center, Center, ValueSome 0.)) |> arg2 cs
             | "sqrt" -> match readOption cs with
@@ -144,7 +148,6 @@ let toAtom (settings: Options) latex =
             let primes, cs = List.partitionWhile ((=) '\'') cs //primes do not include the one already matched
             List.length primes + 1 |> Primes |> arg0 cs
         | c::cs -> string c |> Ordinary |> arg0 cs
-        |> Result.map (fun (tableEnv, cs, list) -> tableEnv, cs, List.rev list)
     match read ValueNone All (List.ofSeq latex) [] with
     | Ok (ValueNone, [], atoms)
     | Ok (ValueSome { Name = ValueNone }, [], atoms) ->
