@@ -54,24 +54,24 @@ Intel Core i5-4570 CPU 3.20GHz (Haswell), 1 CPU, 4 logical and 4 physical cores
   Core   : .NET Core 2.1.7 (CoreCLR 4.6.27129.04, CoreFX 4.6.27129.04), 64bit RyuJIT
 
 
-            Method |  Job | Runtime | Count | Length |          Mean |       Error |      StdDev |
------------------- |----- |-------- |------ |------- |--------------:|------------:|------------:|
-           Add_Map | Core |    Core |   100 |     10 |     43.527 us |   0.5113 us |   0.4782 us |
-    Add_Dictionary | Core |    Core |   100 |     10 |      5.823 us |   0.0509 us |   0.0476 us |
-        Lookup_Map | Core |    Core |   100 |     10 |     10.964 us |   0.1041 us |   0.0974 us |
- Lookup_Dictionary | Core |    Core |   100 |     10 |      3.960 us |   0.0558 us |   0.0522 us |
-           Add_Map | Core |    Core |   100 |    100 |     43.808 us |   0.4180 us |   0.3910 us |
-    Add_Dictionary | Core |    Core |   100 |    100 |     11.997 us |   0.0917 us |   0.0813 us |
-        Lookup_Map | Core |    Core |   100 |    100 |     10.989 us |   0.1063 us |   0.0994 us |
- Lookup_Dictionary | Core |    Core |   100 |    100 |     10.183 us |   0.0940 us |   0.0879 us |
-           Add_Map | Core |    Core | 10000 |     10 | 15,504.510 us | 300.0044 us | 357.1339 us |
-    Add_Dictionary | Core |    Core | 10000 |     10 |    858.189 us |  16.8967 us |  27.7618 us |
-        Lookup_Map | Core |    Core | 10000 |     10 |  3,205.454 us |  63.8344 us |  75.9904 us |
- Lookup_Dictionary | Core |    Core | 10000 |     10 |    560.489 us |   5.4141 us |   5.0643 us |
-           Add_Map | Core |    Core | 10000 |    100 | 16,470.972 us | 325.1749 us | 671.5425 us |
-    Add_Dictionary | Core |    Core | 10000 |    100 |  1,842.098 us |  35.2396 us |  43.2774 us |
-        Lookup_Map | Core |    Core | 10000 |    100 |  3,969.983 us |  87.7269 us | 258.6646 us |
- Lookup_Dictionary | Core |    Core | 10000 |    100 |  1,529.212 us |  29.9664 us |  57.0141 us |
+            Method| Count | Length |          Mean |       Error |      StdDev |
+------------------|------ |------- |--------------:|------------:|------------:|
+           Add_Map|   100 |     10 |     43.527 us |   0.5113 us |   0.4782 us |
+    Add_Dictionary|   100 |     10 |      5.823 us |   0.0509 us |   0.0476 us |
+        Lookup_Map|   100 |     10 |     10.964 us |   0.1041 us |   0.0974 us |
+ Lookup_Dictionary|   100 |     10 |      3.960 us |   0.0558 us |   0.0522 us |
+           Add_Map|   100 |    100 |     43.808 us |   0.4180 us |   0.3910 us |
+    Add_Dictionary|   100 |    100 |     11.997 us |   0.0917 us |   0.0813 us |
+        Lookup_Map|   100 |    100 |     10.989 us |   0.1063 us |   0.0994 us |
+ Lookup_Dictionary|   100 |    100 |     10.183 us |   0.0940 us |   0.0879 us |
+           Add_Map| 10000 |     10 | 15,504.510 us | 300.0044 us | 357.1339 us |
+    Add_Dictionary| 10000 |     10 |    858.189 us |  16.8967 us |  27.7618 us |
+        Lookup_Map| 10000 |     10 |  3,205.454 us |  63.8344 us |  75.9904 us |
+ Lookup_Dictionary| 10000 |     10 |    560.489 us |   5.4141 us |   5.0643 us |
+           Add_Map| 10000 |    100 | 16,470.972 us | 325.1749 us | 671.5425 us |
+    Add_Dictionary| 10000 |    100 |  1,842.098 us |  35.2396 us |  43.2774 us |
+        Lookup_Map| 10000 |    100 |  3,969.983 us |  87.7269 us | 258.6646 us |
+ Lookup_Dictionary| 10000 |    100 |  1,529.212 us |  29.9664 us |  57.0141 us |
  
 // * Warnings *
 MultimodalDistribution
