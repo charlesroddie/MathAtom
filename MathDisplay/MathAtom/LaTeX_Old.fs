@@ -2,18 +2,14 @@
 
 open MathDisplay.DataTypes
 
-type Options = {
-    Delimiters: AliasDictionary<string, Delimiter>
-    Commands: AliasDictionary<string, MathAtom>
-} with
-    static member Default = {
-        Delimiters = LaTeXDefaultMaps.Delimiters
-        Commands = LaTeXDefaultMaps.Commands
-    }
-    
-
 [<Struct>] type internal Read = Until of char | UntilRightDelimiter | OneArgument | All
 type TableEnvironment = { Name:string voption; Ended:bool; NumRows:int }
+type Options = {
+    Delimiters: AliasMap<string, Delimiter>
+} with
+    static member Default = {
+        Delimiters = LaTeXDefaultMaps.delimiters
+    }
 exception ImplementationHasUnreadCharactersException of InputLaTeX:string * UnreadChars:char list * UnfinishedAtomList:MathAtom list
     with override this.Message = "The implementation has not read some characters yet, despite succeeding. The input LaTeX was: \n\n" + this.InputLaTeX
                                + "\n\nThe unread characters were: \n\n" + this.UnreadChars.ToString()
@@ -79,13 +75,6 @@ let toAtom (settings: Options) latex =
         ///Processes 2 arguments, then continues reading
         let arg2 = argPlus1 arg1
 
-        let processCommand cmd cs =
-            match settings.Commands.TryGetValueFSharp cmd with
-            | true, atom ->
-                let replaceArguments atom args =
-                    
-            | false, _ -> @"Unrecognized command: " + cmd |> Error
-
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
         //* Use the arg functions!
 
@@ -98,7 +87,58 @@ let toAtom (settings: Options) latex =
             | Until '}' -> "Missing closing brace" |> Error
             | Until c -> "Expected character not found: " + c.ToString() |> Error
         | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, List.rev list) |> Ok
-        | '\\'::CommandName (cmd, cs) -> processCommand (@"\" + cmd)
+        | '\\'::CommandName (cmd, cs) ->
+            let infixFracCmd hasRule cs delims =
+                match readBlock until collapse (fun cs atom -> Ok struct(cs, atom)) cs with
+                | Ok struct(cs, denom) ->
+                    let numer = List.rev list |> collapse
+                    let frac = Fraction (numer, denom, Center, Center, if hasRule then ValueNone else ValueSome 0.)
+                    Ok (tableEnv, cs,
+                        [match delims with
+                         | ValueSome struct(left, right) -> yield Delimited (left, frac, right)
+                         | ValueNone -> yield frac])
+                | Error e -> Error e
+            match cmd with
+            | "1" -> TestResult___ "It's 1!" |> arg0 cs
+            //Commands that return
+            | "right" -> match until with
+                         | UntilRightDelimiter -> (tableEnv, cs, List.rev list) |> Ok
+                         | _ -> Error @"Missing \left"
+            | "over" -> ValueNone |> infixFracCmd true cs
+            | "atop" -> ValueNone |> infixFracCmd false cs
+            | "choose" -> ValueSome struct(Delimiter "(", Delimiter ")") |> infixFracCmd false cs
+            | "brack" -> ValueSome struct(Delimiter "[", Delimiter "]") |> infixFracCmd false cs
+            | "brace" -> ValueSome struct(Delimiter "{", Delimiter "}") |> infixFracCmd false cs
+            | "atopwithdelims" ->
+                readDelimiter cs |> Result.bind (fun (left, cs) ->
+                readDelimiter cs |> Result.bind (fun (right, cs) ->
+                ValueSome(struct(left, right)) |> infixFracCmd false cs))
+            | @"\" | "cr" ->
+                match tableEnv with
+                | ValueSome env -> (ValueSome { env with NumRows = env.NumRows + 1 }, cs, List.rev list) |> Ok
+                | ValueNone -> readTable ValueNone cs
+
+            | "frac" -> (fun n d -> Fraction (n, d, Center, Center, ValueNone)) |> arg2 cs
+            | "binom" -> (fun n d -> Fraction (n, d, Center, Center, ValueSome 0.)) |> arg2 cs
+            | "sqrt" -> match readOption cs with
+                        | Ok (ValueSome (cs, degree)) -> arg1 cs (fun radicand -> Radical (ValueSome degree, radicand))
+                        | Ok ValueNone -> arg1 cs (fun radicand -> Radical (ValueNone, radicand))
+                        | Error e -> Error e
+            | "left" -> match readDelimiter cs with
+                        | Ok (left, cs) -> 
+
+                            readBlock UntilRightDelimiter collapse (fun cs inner ->
+                               match readDelimiter cs with
+                               | Ok (right, cs) -> Delimited (left, inner, right) |> arg0 cs
+                               | Error e -> Error e
+                            ) cs
+                        | Error e -> Error e
+            | "overline" -> arg1 cs Overlined
+            | "underline" -> arg1 cs Underlined
+            | "begin" -> match readEnvironment cs with
+                         | Ok (env, cs) -> failwith "not implemented"
+                         | Error e -> Error e
+            | _ -> @"Unrecognized command: \" + cmd |> Error
         | '^'::cs -> arg1 cs Superscript
         | '_'::cs -> arg1 cs Subscript
         | '{'::cs -> readBlock (Until '}') Row arg0 cs

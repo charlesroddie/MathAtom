@@ -93,12 +93,3 @@ module AliasMap =
     let ofListWithValueMap valueMap list = ofListWtihKeyKeysValueMap id id valueMap list
     /// Takes a list of (Primary key you get by indexing with the value, Other keys, Value)
     let ofListWithKeyValueMap keyMap valueMap list = ofListWtihKeyKeysValueMap keyMap (List.map keyMap) valueMap list
-
-type INT = INT of int
-type L() =
-    class
-        member __.Item with get(f : INT) = f
-        member __.Item with get(f : int) = f
-        static member IUEWOKJU(this : L) = this.[1]
-    end
-   

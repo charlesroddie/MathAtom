@@ -8,8 +8,10 @@ type Style = class end
 
 [<Measure>] type mu
 
+[<Struct>] type Direction = Forwards | Backwards
 type MathAtom =
-    | TestResult___ of string
+    | Argument of id:int
+    | Argument_AllAtoms of Direction * id:int
     | Row of MathAtom list
     (*| Ordinary = Number | Variable | UnaryOperator*)
     | Number of string

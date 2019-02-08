@@ -18,6 +18,6 @@ type TestClass () =
         let fff = MathDisplay.DataTypes.List.partitionWhile ((=) 'a') ['a'; 'a'; 'a'; 'a'; 'b'; 'c']
         let x =
             @"123"
-            |> LaTeX.toAtom LaTeX.Options.Default
+            |> LaTeX.ToAtom LaTeX.Options.Default
         (match x with Ok r -> r | Error e -> InfoException e |> raise).ToString() |>
         Assert.Pass

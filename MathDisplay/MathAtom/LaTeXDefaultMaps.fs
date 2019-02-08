@@ -4,7 +4,7 @@ open MathDisplay.DataTypes
 
 //Use (Alt+Left mouse) drag to create multiple cursors so that spaces can be inputted simultaneously
 [<CompiledName "Delimiters">]
-let delimiters =
+let Delimiters =
    [".",           [],            "" // . means no delimiter
     "(",           [],            "("
     ")",           [],            ")"
@@ -31,7 +31,7 @@ let delimiters =
     "lfloor",      [],            "\u230A"
     "rfloor",      [],            "\u230B"]
         
-    |> AliasMap.ofListWithValueMap Delimiter
+    |> aliasDictValueMap Delimiter
 
 [<CompiledName "MatrixEnvironments">]
 let matrixEnvironments =
@@ -41,10 +41,9 @@ let matrixEnvironments =
      "Bmatrix", [], ("{", "}")
      "vmatrix", [], ("|", "|")
      "Vmatrix", [], ("||", "||")]
-    |> AliasMap.ofListWithValueMap (fun (l, r) -> (Option.get delimiters.[l], Option.get delimiters.[r]))
-
-[<CompiledName "CharToAtom">]
-let charToAtom c =
+    |> aliasDictValueMap (fun (l, r) -> (Delimiters.[l], Delimiters.[r]))
+    
+let ``(charToAtom) <--- Unused for now....`` c =
     let (|Space|_|) s = if System.Char.IsControl s || System.Char.IsWhiteSpace s then Some Space else None
     match c with
     | _ when '0' <= c && c <= '9' -> string c |> Number |> ValueSome
@@ -59,3 +58,10 @@ let charToAtom c =
     | '-' | '\u2212' -> BinaryOperator '\u2212' |> ValueSome // use the math minus sign
     | '.' -> string c |> Number |> ValueSome
     | '"' | '/' | '@' | '`' | '|' | _ -> string c |> Ordinary |> ValueSome
+
+open MathDisplay.MathAtom.LaTeXCommand
+
+let Commands =
+    [@"\frac", [], Fraction (Argument 1, Argument 2, Center, Center, ValueNone)
+     @"\1", [], Ordinary "1"]
+    |> aliasDict
