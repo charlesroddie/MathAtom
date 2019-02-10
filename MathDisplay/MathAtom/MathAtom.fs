@@ -11,7 +11,7 @@ type Style = class end
 [<Struct>] type Direction = Forwards | Backwards
 type MathAtom =
     | Argument of id:int
-    | Argument_AllAtoms of Direction * id:int
+    | Argument_AllAtoms of Direction
     | Row of MathAtom list
     (*| Ordinary = Number | Variable | UnaryOperator*)
     | Number of string

@@ -1,5 +1,6 @@
 ﻿module MathDisplay.MathAtom.LaTeX
 
+open System.Collections.Generic
 open MathDisplay.DataTypes
 
 type Options = {
@@ -82,8 +83,67 @@ let toAtom (settings: Options) latex =
         let processCommand cmd cs =
             match settings.Commands.TryGetValueFSharp cmd with
             | true, atom ->
-                let replaceArguments atom args =
-                    
+                let rec readArgUntil id argMax (argDict:Dictionary<int, MathAtom>) cs =
+                    if id <= argMax
+                    then Ok cs
+                    else
+                        match read tableEnv OneArgument cs [] with
+                        | Ok (tableEnv, cs, atoms) ->
+                            let argMax = argMax + 1
+                            let atom = collapse atoms
+                            argDict.Add(argMax, atom)
+                            readArgUntil id argMax argDict cs
+                        | Error e -> Error e
+                let rec replaceArguments atom argMax argDict cs =
+                    match atom with
+                    | Argument id ->
+                        if id <= argMax
+                        then argDict.[id]
+                        else
+                            match readArgUntil id argMax argDict cs with
+                            | Ok cs -> Ok (id, argDict.[id], cs)
+                    | Argument_AllAtoms dir ->
+                        //WIP!!!!!!!!!!!!!!!!!!!!!
+                        match dir with
+                        | Backwards -> List.rev list
+                        | Forwards ->
+                            match readBlock until collapse (fun cs atom -> Ok (cs, atom)) cs with
+                            | Ok tup -> Ok tup
+                            | Error e -> Error e
+                    | Row list -> List. (fun item -> replaceArguments item argMax argDict cs)
+                    (*| Ordinary = Number | Variable | UnaryOperator*)
+                    | Number of string
+                    | Variable of char
+                    | UnaryOperator of char
+                    | Ordinary of string
+                    /// sin/cos, integral, etc.
+                    | LargeOperator of Operator * lowerLimit:MathAtom voption * upperLimit:MathAtom voption
+                    | BinaryOperator of char
+                    | BinaryRelationalOperator of char
+                    //Bracket characters, need not be balanced.
+                    | OpenBracket of char
+                    | CloseBracket of char
+                    | Fraction of numerator:MathAtom * denominator:MathAtom * nXAlign:Alignment * dXAlign:Alignment * customRuleThickness:float voption
+                    | Radical of degree:MathAtom voption * radicand:MathAtom
+                    | Punctuation of char
+                    | PlaceholderInput
+                    //Scripts of previous atom
+                    | Superscript of MathAtom
+                    | Subscript of MathAtom
+                    | Offsetted of x:float * y:float
+                    | Delimited of left:Delimiter * atom:MathAtom * right:Delimiter
+                    | Underlined of MathAtom
+                    | Overlined of MathAtom
+                    | Accented of MathAtom * Accent
+                    | Primes of count:int
+                    //| Boundary (changed to Delimiter)
+                    | Space of float<mu>
+                    ///Style changes during rendering
+                    | Styled of Style * MathAtom
+                    | Text of string
+                    | Colored of System.Drawing.Color * MathAtom
+                    ///A table. Not part of TeX.
+                    | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list
             | false, _ -> @"Unrecognized command: " + cmd |> Error
 
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
