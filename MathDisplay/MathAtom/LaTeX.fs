@@ -94,9 +94,10 @@ let toAtom (settings: Options) latex =
                             argDict.Add(argMax, atom)
                             readArgUntil id argMax argDict cs
                         | Error e -> Error e
-                let rec replaceArguments atom argMax argDict cs =
+                let rec replaceArguments atom state =
                     match atom with
                     | Argument id ->
+                        let argMax, argDict, cs = state
                         if id <= argMax
                         then argDict.[id]
                         else
@@ -110,20 +111,22 @@ let toAtom (settings: Options) latex =
                             match readBlock until collapse (fun cs atom -> Ok (cs, atom)) cs with
                             | Ok tup -> Ok tup
                             | Error e -> Error e
-                    | Row list -> List. (fun item -> replaceArguments item argMax argDict cs)
-                    (*| Ordinary = Number | Variable | UnaryOperator*)
-                    | Number of string
-                    | Variable of char
-                    | UnaryOperator of char
-                    | Ordinary of string
-                    /// sin/cos, integral, etc.
-                    | LargeOperator of Operator * lowerLimit:MathAtom voption * upperLimit:MathAtom voption
-                    | BinaryOperator of char
-                    | BinaryRelationalOperator of char
-                    //Bracket characters, need not be balanced.
-                    | OpenBracket of char
-                    | CloseBracket of char
-                    | Fraction of numerator:MathAtom * denominator:MathAtom * nXAlign:Alignment * dXAlign:Alignment * customRuleThickness:float voption
+                    | Row list -> List.unfold (function
+                                               | item::items -> match replaceArguments item state with
+                                                                | Success _ as res -> Some (res, items)
+                                                                | Error _ as res -> Some (res, [])
+                                               | _ -> None) list
+                    | Number _ | Variable _ | UnaryOperator _ | Ordinary _
+                    | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _ as atom -> Ok atom
+                    | LargeOperator (op, lower, upper) ->
+                        match lower with
+                        | ValueSome lower ->
+                            match upper with
+                            | ValueSome upper ->
+                                match replaceArguments lower state with
+                                | 
+                        LargeOperator (op, ValueOption.map (fun low -> replaceArguments low state) lower, ValueOption.map (fun up -> replaceArguments up state) upper)
+                    | Fraction (num, den, nAlign, dAlign, thickness) -> 
                     | Radical of degree:MathAtom voption * radicand:MathAtom
                     | Punctuation of char
                     | PlaceholderInput
