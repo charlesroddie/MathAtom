@@ -83,53 +83,67 @@ let toAtom (settings: Options) latex =
         let processCommand cmd cs =
             match settings.Commands.TryGetValueFSharp cmd with
             | true, atom ->
-                let rec readArgUntil id argMax (argDict:Dictionary<int, MathAtom>) cs =
-                    if id <= argMax
-                    then Ok cs
-                    else
-                        match read tableEnv OneArgument cs [] with
-                        | Ok (tableEnv, cs, atoms) ->
-                            let argMax = argMax + 1
-                            let atom = collapse atoms
-                            argDict.Add(argMax, atom)
-                            readArgUntil id argMax argDict cs
-                        | Error e -> Error e
+                let inline readArgUntil' readArgUntil id until argDict addToArgDict tableEnv cs = //Inline for tail recursive optimizations
+                    match read tableEnv until cs [] with
+                    | Ok (tableEnv, cs, atoms) ->
+                        collapse atoms |> addToArgDict
+                        readArgUntil id tableEnv argDict cs
+                    | Error e -> Error e
+                let rec readArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
+                    match argDict.Required id with
+                    | ValueSome arg -> Ok (tableEnv, arg)
+                    | ValueNone ->
+                        match cs with
+                        | '['::cs -> readArgUntil' readArgUntil id (Until ']') argDict argDict.AddRequired tableEnv cs
+                        | _ -> readArgUntil' readArgUntil id OneArgument argDict argDict.AddRequired tableEnv cs
+                let rec readOptionalArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
+                    match argDict.Optional id with
+                    | ValueSome arg -> Ok (tableEnv, ValueSome arg)
+                    | ValueNone ->
+                        match cs with
+                        | '['::cs -> readArgUntil' readOptionalArgUntil id (Until ']') argDict argDict.AddOptional tableEnv cs
+                        | _ -> Ok (tableEnv, ValueNone)
+
                 let rec replaceArguments atom state =
+                    let replace1 atomMaker atom =
+                        match replaceArguments atom state with
+                        | Ok (tableEnv, atom, cs) -> Ok (tableEnv, atom)
                     match atom with
                     | Argument id ->
-                        let argMax, argDict, cs = state
-                        if id <= argMax
-                        then argDict.[id]
-                        else
-                            match readArgUntil id argMax argDict cs with
-                            | Ok cs -> Ok (id, argDict.[id], cs)
+                        let tableEnv, argDict, cs = state
+                        match readArgUntil id tableEnv argDict cs with
+                        | Ok (tableEnv, atom) -> Ok (tableEnv, atom, cs)
+                        | Error e -> Error e
+                    | Argument_Optional (id, defaultValue) ->
+                        let tableEnv, argDict, cs = state
+                        match readOptionalArgUntil id tableEnv argDict cs with
+                        | Ok (tableEnv, ValueSome atom) -> Ok (tableEnv, atom, cs)
+                        | Ok (tableEnv, ValueNone) -> Ok (tableEnv, defaultValue, cs)
+                        | Error e -> Error e
                     | Argument_AllAtoms dir ->
-                        //WIP!!!!!!!!!!!!!!!!!!!!!
                         match dir with
-                        | Backwards -> List.rev list
+                        | Backwards -> Ok (tableEnv, List.rev list |> collapse, cs)
                         | Forwards ->
                             match readBlock until collapse (fun cs atom -> Ok (cs, atom)) cs with
-                            | Ok tup -> Ok tup
+                            | Ok (cs, atom) -> Ok (tableEnv, atom, cs)
                             | Error e -> Error e
-                    | Row list -> List.unfold (function
-                                               | item::items -> match replaceArguments item state with
-                                                                | Success _ as res -> Some (res, items)
-                                                                | Error _ as res -> Some (res, [])
-                                               | _ -> None) list
+                    | Row list ->
+                        //WIP!!!
+                        match List.unfold (function
+                                           | tableEnv, item::items, cs -> match replaceArguments item state with
+                                                                          | Ok (tableEnv, atom, cs) -> Some (Ok atom, (tableEnv, items, cs))
+                                                                          | Error e -> Some (Error e, (tableEnv, [], cs))
+                                           | _ -> None) (tableEnv, list, cs)
+                              with
+                        | (Error e)::_ -> Error e
+                        | list -> Ok (tableEnv, List.map (function
+                                                          | Ok value -> value 
+                                                          | Error _ -> failwith "Impossible at case Row at replaceArguments in LaTeX.ToAtom") list |> Row, cs)
                     | Number _ | Variable _ | UnaryOperator _ | Ordinary _
-                    | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _ as atom -> Ok atom
-                    | LargeOperator (op, lower, upper) ->
-                        match lower with
-                        | ValueSome lower ->
-                            match upper with
-                            | ValueSome upper ->
-                                match replaceArguments lower state with
-                                | 
-                        LargeOperator (op, ValueOption.map (fun low -> replaceArguments low state) lower, ValueOption.map (fun up -> replaceArguments up state) upper)
+                    | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _
+                    | LargeOperator _ | Punctuation _ | PlaceholderInput | Primes _ | Space _ as atom -> Ok (tableEnv, atom, cs)
                     | Fraction (num, den, nAlign, dAlign, thickness) -> 
-                    | Radical of degree:MathAtom voption * radicand:MathAtom
-                    | Punctuation of char
-                    | PlaceholderInput
+                    | Radical (degree, radicand) -> match replaceArguments degree state with
                     //Scripts of previous atom
                     | Superscript of MathAtom
                     | Subscript of MathAtom
@@ -138,15 +152,12 @@ let toAtom (settings: Options) latex =
                     | Underlined of MathAtom
                     | Overlined of MathAtom
                     | Accented of MathAtom * Accent
-                    | Primes of count:int
-                    //| Boundary (changed to Delimiter)
-                    | Space of float<mu>
                     ///Style changes during rendering
                     | Styled of Style * MathAtom
-                    | Text of string
                     | Colored of System.Drawing.Color * MathAtom
                     ///A table. Not part of TeX.
                     | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list
+                replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
             | false, _ -> @"Unrecognized command: " + cmd |> Error
 
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *

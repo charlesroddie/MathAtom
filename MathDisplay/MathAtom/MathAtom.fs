@@ -11,6 +11,7 @@ type Style = class end
 [<Struct>] type Direction = Forwards | Backwards
 type MathAtom =
     | Argument of id:int
+    | Argument_Optional of id:int * defaultValue:MathAtom
     | Argument_AllAtoms of Direction
     | Row of MathAtom list
     (*| Ordinary = Number | Variable | UnaryOperator*)
@@ -19,20 +20,21 @@ type MathAtom =
     | UnaryOperator of char
     | Ordinary of string
     /// sin/cos, integral, etc.
-    | LargeOperator of Operator * lowerLimit:MathAtom voption * upperLimit:MathAtom voption
+    | LargeOperator of Operator
     | BinaryOperator of char
     | BinaryRelationalOperator of char
     //Bracket characters, need not be balanced.
     | OpenBracket of char
     | CloseBracket of char
     | Fraction of numerator:MathAtom * denominator:MathAtom * nXAlign:Alignment * dXAlign:Alignment * customRuleThickness:float voption
-    | Radical of degree:MathAtom voption * radicand:MathAtom
+    //(Row []) to indicate empty degree
+    | Radical of degree:MathAtom * radicand:MathAtom
     | Punctuation of char
     | PlaceholderInput
     //Scripts of previous atom
-    | Superscript of MathAtom
-    | Subscript of MathAtom
-    | Offsetted of x:float * y:float
+    | Superscripted of MathAtom
+    | Subscripted of MathAtom
+    | Offsetted of MathAtom * x:float * y:float
     | Delimited of left:Delimiter * atom:MathAtom * right:Delimiter
     | Underlined of MathAtom
     | Overlined of MathAtom
@@ -42,7 +44,7 @@ type MathAtom =
     | Space of float<mu>
     ///Style changes during rendering
     | Styled of Style * MathAtom
-    | Text of string
+    //| Text of string -> | Ordinary of string
     | Colored of System.Drawing.Color * MathAtom
     ///A table. Not part of TeX.
     | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list
