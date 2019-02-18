@@ -62,6 +62,6 @@ let ``(charToAtom) <--- Unused for now....`` c =
 open MathDisplay.MathAtom.LaTeXCommand
 
 let Commands =
-    [@"\frac", [], Fraction (Argument 1, Argument 2, Center, Center, ValueNone)
-     @"\1", [], Ordinary "1"]
+    [@"frac", [], Fraction (Argument 1, Argument 2, Center, Center, ValueNone)
+     @"1", [], Ordinary "1"]
     |> aliasDict

@@ -17,7 +17,7 @@ type TestClass () =
     member __.``Gather output`` () =
         let fff = MathDisplay.DataTypes.List.partitionWhile ((=) 'a') ['a'; 'a'; 'a'; 'a'; 'b'; 'c']
         let x =
-            @"123"
+            @"\frac23"
             |> LaTeX.ToAtom LaTeX.Options.Default
         (match x with Ok r -> r | Error e -> InfoException e |> raise).ToString() |>
         Assert.Pass

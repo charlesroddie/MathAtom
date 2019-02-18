@@ -43,8 +43,8 @@ type MathAtom =
     //| Boundary (changed to Delimiter)
     | Space of float<mu>
     ///Style changes during rendering
-    | Styled of Style * MathAtom
+    | Styled of MathAtom * Style
     //| Text of string -> | Ordinary of string
-    | Colored of System.Drawing.Color * MathAtom
+    | Colored of MathAtom * System.Drawing.Color
     ///A table. Not part of TeX.
     | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list

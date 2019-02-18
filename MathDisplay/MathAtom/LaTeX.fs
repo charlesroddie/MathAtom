@@ -20,7 +20,7 @@ exception ImplementationHasUnreadCharactersException of InputLaTeX:string * Unre
                                + "\n\nThe unread characters were: \n\n" + this.UnreadChars.ToString()
                                + "\n\nThe Unfinished atom list was: \n\n" + this.UnfinishedAtomList.ToString()
 
-let toAtom (settings: Options) latex =
+let ToAtom (settings: Options) latex =
     let errorArgMissing = Error "Unexpected end of input, missing argument"
     let errorDelimMissing cmd = Error (cmd + " was not found in delimiter map")
     let collapse xs = match xs with [x] -> x | x -> Row x
@@ -37,14 +37,14 @@ let toAtom (settings: Options) latex =
             | [] -> errorArgMissing
             | '\\'::CommandName(cmd, cs) ->
                 let cmd = match cmd with "|" -> "||" | _ -> cmd
-                match AliasMap.tryFindValue cmd settings.Delimiters with
-                | Some v -> Ok (v, cs)
-                | None -> errorDelimMissing cmd
+                match settings.Delimiters.TryGetValueFSharp cmd with
+                | true, v -> Ok (v, cs)
+                | false, _ -> errorDelimMissing cmd
             | c::cs ->
                 let c = string c
-                match AliasMap.tryFindValue c settings.Delimiters with
-                | Some v -> Ok (v, cs)
-                | None -> errorDelimMissing c
+                match settings.Delimiters.TryGetValueFSharp c with
+                | true, v -> Ok (v, cs)
+                | false, _ -> errorDelimMissing c
         ///Reads an environment
         let readEnvironment cs =
             match cs with
@@ -105,9 +105,16 @@ let toAtom (settings: Options) latex =
                         | _ -> Ok (tableEnv, ValueNone)
 
                 let rec replaceArguments atom state =
-                    let replace1 atomMaker atom =
-                        match replaceArguments atom state with
-                        | Ok (tableEnv, atom, cs) -> Ok (tableEnv, atom)
+                    //Not working...
+                    //let replaceNp1 replaceN atomMaker (_, argDict, _ as state) atom = Result.bind (fun (tableEnv, atom', cs) -> replaceN (atomMaker atom') (tableEnv, argDict, cs)) (replaceArguments atom state)
+                    let replace1 atomMaker state atom = Result.map (fun (tableEnv, atom', cs) -> (tableEnv, atomMaker atom', cs)) (replaceArguments atom state)
+                    let replace2 atomMaker (_, argDict, _ as state) atom1 atom2 =
+                        Result.bind (fun (tableEnv, atom', cs) -> replace1 (atomMaker atom') (tableEnv, argDict, cs) atom2) (replaceArguments atom1 state)
+                    //let replace3 atomMaker (_, argDict, _ as state) atom1 atom2 atom3 =
+                    //    Result.bind (fun (tableEnv, atom', cs) -> replace2 (atomMaker atom') (tableEnv, argDict, cs) atom3 atom2) (replaceArguments atom1 state)
+                    let replaceList argDict = List.mapFoldResult (fun struct(tableEnv, cs) arg -> match replaceArguments arg (tableEnv, argDict, cs) with
+                                                                                                  | Ok (tableEnv, result, cs) -> Ok (result, struct(tableEnv, cs))
+                                                                                                  | Error e -> Error e)
                     match atom with
                     | Argument id ->
                         let tableEnv, argDict, cs = state
@@ -128,35 +135,29 @@ let toAtom (settings: Options) latex =
                             | Ok (cs, atom) -> Ok (tableEnv, atom, cs)
                             | Error e -> Error e
                     | Row list ->
-                        //WIP!!!
-                        match List.unfold (function
-                                           | tableEnv, item::items, cs -> match replaceArguments item state with
-                                                                          | Ok (tableEnv, atom, cs) -> Some (Ok atom, (tableEnv, items, cs))
-                                                                          | Error e -> Some (Error e, (tableEnv, [], cs))
-                                           | _ -> None) (tableEnv, list, cs)
-                              with
-                        | (Error e)::_ -> Error e
-                        | list -> Ok (tableEnv, List.map (function
-                                                          | Ok value -> value 
-                                                          | Error _ -> failwith "Impossible at case Row at replaceArguments in LaTeX.ToAtom") list |> Row, cs)
+                        let tableEnv, argDict, cs = state
+                        match replaceList argDict struct(tableEnv, cs) list with
+                        | Ok (list, struct(tableEnv, cs)) -> Ok (tableEnv, Row list, cs)
+                        | Error e -> Error e
                     | Number _ | Variable _ | UnaryOperator _ | Ordinary _
                     | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _
                     | LargeOperator _ | Punctuation _ | PlaceholderInput | Primes _ | Space _ as atom -> Ok (tableEnv, atom, cs)
-                    | Fraction (num, den, nAlign, dAlign, thickness) -> 
-                    | Radical (degree, radicand) -> match replaceArguments degree state with
-                    //Scripts of previous atom
-                    | Superscript of MathAtom
-                    | Subscript of MathAtom
-                    | Offsetted of x:float * y:float
-                    | Delimited of left:Delimiter * atom:MathAtom * right:Delimiter
-                    | Underlined of MathAtom
-                    | Overlined of MathAtom
-                    | Accented of MathAtom * Accent
-                    ///Style changes during rendering
-                    | Styled of Style * MathAtom
-                    | Colored of System.Drawing.Color * MathAtom
-                    ///A table. Not part of TeX.
-                    | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list
+                    | Fraction (num, den, nAlign, dAlign, thickness) -> replace2 (fun num den -> Fraction (num, den, nAlign, dAlign, thickness)) state num den
+                    | Radical (degree, radicand) -> replace2 (fun degree radicand -> Radical (degree, radicand)) state degree radicand
+                    | Superscripted atom -> replace1 Superscripted state atom
+                    | Subscripted atom -> replace1 Subscripted state atom
+                    | Offsetted (atom, x, y) -> replace1 (fun atom -> Offsetted(atom, x, y)) state atom
+                    | Delimited (left, atom, right) -> replace1 (fun atom -> Delimited(left, atom, right)) state atom
+                    | Underlined atom -> replace1 Underlined state atom
+                    | Overlined atom -> replace1 Overlined state atom
+                    | Accented (atom, accent) -> replace1 (fun atom -> Accented(atom, accent)) state atom
+                    | Styled (atom, style) -> replace1 (fun atom -> Styled(atom, style)) state atom
+                    | Colored (atom, color) -> replace1 (fun atom -> Colored(atom, color)) state atom
+                    | Table (atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments) ->
+                        let tableEnv, argDict, cs = state
+                        match List.mapFoldResult (replaceList argDict) struct(tableEnv, cs) atomss with
+                        | Ok(atomss, struct(tableEnv, cs)) -> Ok(tableEnv, Table(atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments), cs)
+                        | Error e -> Error e
                 replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
             | false, _ -> @"Unrecognized command: " + cmd |> Error
 
@@ -172,9 +173,12 @@ let toAtom (settings: Options) latex =
             | Until '}' -> "Missing closing brace" |> Error
             | Until c -> "Expected character not found: " + c.ToString() |> Error
         | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, List.rev list) |> Ok
-        | '\\'::CommandName (cmd, cs) -> processCommand (@"\" + cmd)
-        | '^'::cs -> arg1 cs Superscript
-        | '_'::cs -> arg1 cs Subscript
+        | '\\'::CommandName (cmd, cs) ->
+            match processCommand cmd cs with
+            | Ok (tableEnv, atom, cs) -> arg0 cs atom
+            | Error e -> Error e
+        | '^'::cs -> arg1 cs Superscripted
+        | '_'::cs -> arg1 cs Subscripted
         | '{'::cs -> readBlock (Until '}') Row arg0 cs
         | '}'::_ -> Error "Missing opening brace"
         //| '&'::cs ->
