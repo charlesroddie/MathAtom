@@ -91,18 +91,19 @@ let ToAtom (settings: Options) latex =
                     | Error e -> Error e
                 let rec readArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
                     match argDict.Required id with
-                    | ValueSome arg -> Ok (tableEnv, arg)
+                    | ValueSome arg -> Ok (tableEnv, arg, cs)
                     | ValueNone ->
                         match cs with
                         | '['::cs -> readArgUntil' readArgUntil id (Until ']') argDict argDict.AddRequired tableEnv cs
+                        | [] -> Error "Unexpected end of text, argument missing"
                         | _ -> readArgUntil' readArgUntil id OneArgument argDict argDict.AddRequired tableEnv cs
                 let rec readOptionalArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
                     match argDict.Optional id with
-                    | ValueSome arg -> Ok (tableEnv, ValueSome arg)
+                    | ValueSome arg -> Ok (tableEnv, ValueSome arg, cs)
                     | ValueNone ->
                         match cs with
                         | '['::cs -> readArgUntil' readOptionalArgUntil id (Until ']') argDict argDict.AddOptional tableEnv cs
-                        | _ -> Ok (tableEnv, ValueNone)
+                        | _ -> Ok (tableEnv, ValueNone, cs)
 
                 let rec replaceArguments atom state =
                     //Not working...
@@ -119,13 +120,13 @@ let ToAtom (settings: Options) latex =
                     | Argument id ->
                         let tableEnv, argDict, cs = state
                         match readArgUntil id tableEnv argDict cs with
-                        | Ok (tableEnv, atom) -> Ok (tableEnv, atom, cs)
+                        | Ok (tableEnv, atom, cs) -> Ok (tableEnv, atom, cs)
                         | Error e -> Error e
                     | Argument_Optional (id, defaultValue) ->
                         let tableEnv, argDict, cs = state
                         match readOptionalArgUntil id tableEnv argDict cs with
-                        | Ok (tableEnv, ValueSome atom) -> Ok (tableEnv, atom, cs)
-                        | Ok (tableEnv, ValueNone) -> Ok (tableEnv, defaultValue, cs)
+                        | Ok (tableEnv, ValueSome atom, cs) -> Ok (tableEnv, atom, cs)
+                        | Ok (tableEnv, ValueNone, cs) -> Ok (tableEnv, defaultValue, cs)
                         | Error e -> Error e
                     | Argument_AllAtoms dir ->
                         match dir with

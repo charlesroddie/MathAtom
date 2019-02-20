@@ -15,9 +15,8 @@ type TestClass () =
 
     [<Test>]
     member __.``Gather output`` () =
-        let fff = MathDisplay.DataTypes.List.partitionWhile ((=) 'a') ['a'; 'a'; 'a'; 'a'; 'b'; 'c']
         let x =
-            @"\frac23"
+            @"\frac\sqrt234"
             |> LaTeX.ToAtom LaTeX.Options.Default
         (match x with Ok r -> r | Error e -> InfoException e |> raise).ToString() |>
         Assert.Pass
