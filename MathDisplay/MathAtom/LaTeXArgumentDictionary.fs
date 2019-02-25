@@ -10,4 +10,4 @@ type LaTeXArgumentDictionary() =
     ///1-based index
     member __.Optional with get id = if id <= optional.Count then ValueSome optional.[id - 1] else ValueNone
     ///1-based index
-    member __.Required with get id = if id < required.Count then ValueSome required.[id - 1] else ValueNone
+    member __.Required with get id = if id <= required.Count then ValueSome required.[id - 1] else ValueNone

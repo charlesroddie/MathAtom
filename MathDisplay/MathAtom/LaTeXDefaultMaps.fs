@@ -58,9 +58,7 @@ let ``(charToAtom) <--- Unused for now....`` c =
     | '-' | '\u2212' -> BinaryOperator '\u2212' |> ValueSome // use the math minus sign
     | '.' -> string c |> Number |> ValueSome
     | '"' | '/' | '@' | '`' | '|' | _ -> string c |> Ordinary |> ValueSome
-
-open MathDisplay.MathAtom.LaTeXCommand
-
+    
 let Commands =
     ["frac", [], Fraction (Argument 1, Argument 2, Center, Center, ValueNone)
      "sqrt", [], Radical (Argument_Optional (1, Row []), Argument 1)

@@ -81,86 +81,81 @@ let ToAtom (settings: Options) latex =
         let arg2 = argPlus1 arg1
 
         let processCommand cmd cs =
-            match settings.Commands.TryGetValueFSharp cmd with
-            | true, atom ->
-                let inline readArgUntil' readArgUntil id until argDict addToArgDict tableEnv cs = //Inline for tail recursive optimizations
-                    match read tableEnv until cs [] with
-                    | Ok (tableEnv, cs, atoms) ->
-                        collapse atoms |> addToArgDict
-                        readArgUntil id tableEnv argDict cs
-                    | Error e -> Error e
-                let rec readArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
-                    match argDict.Required id with
-                    | ValueSome arg -> Ok (tableEnv, arg, cs)
-                    | ValueNone ->
-                        match cs with
-                        | '['::cs -> readArgUntil' readArgUntil id (Until ']') argDict argDict.AddRequired tableEnv cs
-                        | [] -> Error "Unexpected end of text, argument missing"
-                        | _ -> readArgUntil' readArgUntil id OneArgument argDict argDict.AddRequired tableEnv cs
-                let rec readOptionalArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
-                    match argDict.Optional id with
-                    | ValueSome arg -> Ok (tableEnv, ValueSome arg, cs)
-                    | ValueNone ->
-                        match cs with
-                        | '['::cs -> readArgUntil' readOptionalArgUntil id (Until ']') argDict argDict.AddOptional tableEnv cs
-                        | _ -> Ok (tableEnv, ValueNone, cs)
+            match cmd with
+            | _ ->
+                match settings.Commands.TryGetValueFSharp cmd with
+                | true, atom ->
+                    let inline readArgUntil' readArgUntil id until argDict addToArgDict tableEnv cs = //Inline for tail recursive optimizations
+                        match read tableEnv until cs [] with
+                        | Ok (tableEnv, cs, atoms) ->
+                            collapse atoms |> addToArgDict
+                            readArgUntil id tableEnv argDict cs
+                        | Error e -> Error e
+                    let rec readArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
+                        match argDict.Required id with
+                        | ValueSome arg -> Ok (tableEnv, arg, cs)
+                        | ValueNone ->
+                            match cs with
+                            | '['::cs -> readArgUntil' readArgUntil id (Until ']') argDict argDict.AddRequired tableEnv cs
+                            | [] -> Error "Unexpected end of text, argument missing"
+                            | _ -> readArgUntil' readArgUntil id OneArgument argDict argDict.AddRequired tableEnv cs
+                    let rec readOptionalArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
+                        match argDict.Optional id with
+                        | ValueSome arg -> Ok (tableEnv, ValueSome arg, cs)
+                        | ValueNone ->
+                            match cs with
+                            | '['::cs -> readArgUntil' readOptionalArgUntil id (Until ']') argDict argDict.AddOptional tableEnv cs
+                            | _ -> Ok (tableEnv, ValueNone, cs)
 
-                let rec replaceArguments atom state =
-                    //Not working...
-                    //let replaceNp1 replaceN atomMaker (_, argDict, _ as state) atom = Result.bind (fun (tableEnv, atom', cs) -> replaceN (atomMaker atom') (tableEnv, argDict, cs)) (replaceArguments atom state)
-                    let replace1 atomMaker state atom = Result.map (fun (tableEnv, atom', cs) -> (tableEnv, atomMaker atom', cs)) (replaceArguments atom state)
-                    let replace2 atomMaker (_, argDict, _ as state) atom1 atom2 =
-                        Result.bind (fun (tableEnv, atom', cs) -> replace1 (atomMaker atom') (tableEnv, argDict, cs) atom2) (replaceArguments atom1 state)
-                    //let replace3 atomMaker (_, argDict, _ as state) atom1 atom2 atom3 =
-                    //    Result.bind (fun (tableEnv, atom', cs) -> replace2 (atomMaker atom') (tableEnv, argDict, cs) atom3 atom2) (replaceArguments atom1 state)
-                    let replaceList argDict = List.mapFoldResult (fun struct(tableEnv, cs) arg -> match replaceArguments arg (tableEnv, argDict, cs) with
-                                                                                                  | Ok (tableEnv, result, cs) -> Ok (result, struct(tableEnv, cs))
-                                                                                                  | Error e -> Error e)
-                    match atom with
-                    | Argument id ->
-                        let tableEnv, argDict, cs = state
-                        match readArgUntil id tableEnv argDict cs with
-                        | Ok (tableEnv, atom, cs) -> Ok (tableEnv, atom, cs)
-                        | Error e -> Error e
-                    | Argument_Optional (id, defaultValue) ->
-                        let tableEnv, argDict, cs = state
-                        match readOptionalArgUntil id tableEnv argDict cs with
-                        | Ok (tableEnv, ValueSome atom, cs) -> Ok (tableEnv, atom, cs)
-                        | Ok (tableEnv, ValueNone, cs) -> Ok (tableEnv, defaultValue, cs)
-                        | Error e -> Error e
-                    | Argument_AllAtoms dir ->
-                        match dir with
-                        | Backwards -> Ok (tableEnv, List.rev list |> collapse, cs)
-                        | Forwards ->
-                            match readBlock until collapse (fun cs atom -> Ok (cs, atom)) cs with
-                            | Ok (cs, atom) -> Ok (tableEnv, atom, cs)
+                    let rec replaceArguments atom state =
+                        //Not working...
+                        //let replaceNp1 replaceN atomMaker (_, argDict, _ as state) atom = Result.bind (fun (tableEnv, atom', cs) -> replaceN (atomMaker atom') (tableEnv, argDict, cs)) (replaceArguments atom state)
+                        let replace1 atomMaker state atom = Result.map (fun (tableEnv, atom', cs) -> (tableEnv, atomMaker atom', cs)) (replaceArguments atom state)
+                        let replace2 atomMaker (_, argDict, _ as state) atom1 atom2 =
+                            Result.bind (fun (tableEnv, atom', cs) -> replace1 (atomMaker atom') (tableEnv, argDict, cs) atom2) (replaceArguments atom1 state)
+                        //let replace3 atomMaker (_, argDict, _ as state) atom1 atom2 atom3 =
+                        //    Result.bind (fun (tableEnv, atom', cs) -> replace2 (atomMaker atom') (tableEnv, argDict, cs) atom3 atom2) (replaceArguments atom1 state)
+                        let replaceList argDict = List.mapFoldResult (fun struct(tableEnv, cs) arg -> match replaceArguments arg (tableEnv, argDict, cs) with
+                                                                                                      | Ok (tableEnv, result, cs) -> Ok (result, struct(tableEnv, cs))
+                                                                                                      | Error e -> Error e)
+                        match atom with
+                        | Argument id ->
+                            let tableEnv, argDict, cs = state
+                            match readArgUntil id tableEnv argDict cs with
+                            | Ok (tableEnv, atom, cs) -> Ok (tableEnv, atom, cs)
                             | Error e -> Error e
-                    | Row list ->
-                        let tableEnv, argDict, cs = state
-                        match replaceList argDict struct(tableEnv, cs) list with
-                        | Ok (list, struct(tableEnv, cs)) -> Ok (tableEnv, Row list, cs)
-                        | Error e -> Error e
-                    | Number _ | Variable _ | UnaryOperator _ | Ordinary _
-                    | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _
-                    | LargeOperator _ | Punctuation _ | PlaceholderInput | Primes _ | Space _ as atom -> Ok (tableEnv, atom, cs)
-                    | Fraction (num, den, nAlign, dAlign, thickness) -> replace2 (fun num den -> Fraction (num, den, nAlign, dAlign, thickness)) state num den
-                    | Radical (degree, radicand) -> replace2 (fun degree radicand -> Radical (degree, radicand)) state degree radicand
-                    | Superscripted atom -> replace1 Superscripted state atom
-                    | Subscripted atom -> replace1 Subscripted state atom
-                    | Offsetted (atom, x, y) -> replace1 (fun atom -> Offsetted(atom, x, y)) state atom
-                    | Delimited (left, atom, right) -> replace1 (fun atom -> Delimited(left, atom, right)) state atom
-                    | Underlined atom -> replace1 Underlined state atom
-                    | Overlined atom -> replace1 Overlined state atom
-                    | Accented (atom, accent) -> replace1 (fun atom -> Accented(atom, accent)) state atom
-                    | Styled (atom, style) -> replace1 (fun atom -> Styled(atom, style)) state atom
-                    | Colored (atom, color) -> replace1 (fun atom -> Colored(atom, color)) state atom
-                    | Table (atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments) ->
-                        let tableEnv, argDict, cs = state
-                        match List.mapFoldResult (replaceList argDict) struct(tableEnv, cs) atomss with
-                        | Ok(atomss, struct(tableEnv, cs)) -> Ok(tableEnv, Table(atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments), cs)
-                        | Error e -> Error e
-                replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
-            | false, _ -> @"Unrecognized command: " + cmd |> Error
+                        | Argument_Optional (id, defaultValue) ->
+                            let tableEnv, argDict, cs = state
+                            match readOptionalArgUntil id tableEnv argDict cs with
+                            | Ok (tableEnv, ValueSome atom, cs) -> Ok (tableEnv, atom, cs)
+                            | Ok (tableEnv, ValueNone, cs) -> Ok (tableEnv, defaultValue, cs)
+                            | Error e -> Error e
+                        | Row list ->
+                            let tableEnv, argDict, cs = state
+                            match replaceList argDict struct(tableEnv, cs) list with
+                            | Ok (list, struct(tableEnv, cs)) -> Ok (tableEnv, Row list, cs)
+                            | Error e -> Error e
+                        | Number _ | Variable _ | UnaryOperator _ | Ordinary _
+                        | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _
+                        | LargeOperator _ | Punctuation _ | PlaceholderInput | Primes _ | Space _ as atom -> Ok (tableEnv, atom, cs)
+                        | Fraction (num, den, nAlign, dAlign, thickness) -> replace2 (fun num den -> Fraction (num, den, nAlign, dAlign, thickness)) state num den
+                        | Radical (degree, radicand) -> replace2 (fun degree radicand -> Radical (degree, radicand)) state degree radicand
+                        | Superscripted atom -> replace1 Superscripted state atom
+                        | Subscripted atom -> replace1 Subscripted state atom
+                        | Offsetted (atom, x, y) -> replace1 (fun atom -> Offsetted(atom, x, y)) state atom
+                        | Delimited (left, atom, right) -> replace1 (fun atom -> Delimited(left, atom, right)) state atom
+                        | Underlined atom -> replace1 Underlined state atom
+                        | Overlined atom -> replace1 Overlined state atom
+                        | Accented (atom, accent) -> replace1 (fun atom -> Accented(atom, accent)) state atom
+                        | Styled (atom, style) -> replace1 (fun atom -> Styled(atom, style)) state atom
+                        | Colored (atom, color) -> replace1 (fun atom -> Colored(atom, color)) state atom
+                        | Table (atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments) ->
+                            let tableEnv, argDict, cs = state
+                            match List.mapFoldResult (replaceList argDict) struct(tableEnv, cs) atomss with
+                            | Ok(atomss, struct(tableEnv, cs)) -> Ok(tableEnv, Table(atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments), cs)
+                            | Error e -> Error e
+                    replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
+                | false, _ -> @"Unrecognized command: " + cmd |> Error
 
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
         //* Use the arg functions!

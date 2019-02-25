@@ -19,7 +19,7 @@ type AliasMap<'Key, 'Value when 'Key : comparison and 'Value : comparison> =
     interface System.Collections.IEnumerable with
         member this.GetEnumerator() = (AliasMap.toSeq this :> System.Collections.IEnumerable).GetEnumerator()
     interface System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<'Key, 'Value>> with
-        member this.GetEnumerator() = match this with | AliasMap (k2v, _) -> (k2v :> System.Collections.Generic.IEnumerable<_>).GetEnumerator()
+        member this.GetEnumerator() = match this with AliasMap (k2v, _) -> (k2v :> System.Collections.Generic.IEnumerable<_>).GetEnumerator()
     interface System.Collections.Generic.IReadOnlyCollection<System.Collections.Generic.KeyValuePair<'Key, 'Value>> with
         member this.Count = AliasMap.count this
     interface System.Collections.Generic.IReadOnlyDictionary<'Key, 'Value> with
