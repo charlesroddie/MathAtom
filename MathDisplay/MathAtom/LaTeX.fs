@@ -51,14 +51,6 @@ let ToAtom (settings: Options) latex =
             | '{'::PartitionAlphabets (ab, '}'::cs) -> Ok (System.String.Concat ab, cs)
             | c::cs -> Ok (string c, cs) //Seems allowed by LaTeX?
             | _ -> "Invalid environment, contains non-A-to-Z characters: " + System.String.Concat cs |> Error
-        ///Reads an argument that is a block and applies it to the functions provided
-        let readBlock until atomMaker useAtom cs =
-            read tableEnv until cs [] |> Result.bind (fun (_, cs, arg) -> atomMaker arg |> useAtom cs)
-        ///Reads an optional argument and returns it, cs should start with '[' to be recognized
-        let readOption cs =
-            match cs with
-            | '['::cs -> readBlock (Until ']') collapse (fun cs atom -> (cs, atom) |> ValueSome |> Ok) cs
-            | _ -> Ok ValueNone
         let readTable name cs = Error "ghvgjhkjnlbvgcfy"
             //let rec innerReadTable rows currentRow cs =
                 //read (ValueSome { Name = name; Ended = false; NumRows = 0 }) until cs list
@@ -67,96 +59,93 @@ let ToAtom (settings: Options) latex =
                 //    match cs with
                 //    | '&'::cs -> innerReadTable 
                 //)
-        ///Processes (N+1) arguments, then continues reading
-        let inline argPlus1 argN cs atomMaker = readBlock OneArgument (collapse >> atomMaker) argN cs
-        ///Processes 0 arguments, then continues reading
-        let arg0 cs atom =
+        
+        let processCommandAtom atom cs =
+            let rec readArgsUntilId id tableEnv (argDict:LaTeXArgumentDictionary) cs =
+                match argDict.Required id with
+                | ValueSome arg -> Ok (tableEnv, arg, cs)
+                | ValueNone ->
+                    match cs with
+                    | '['::cs ->
+                        read tableEnv (Until ']') cs []
+                        |> Result.bind (fun (tableEnv, cs, atoms) ->
+                            collapse atoms |> argDict.AddOptional
+                            readArgsUntilId id tableEnv argDict cs)
+                    | [] -> Error "Unexpected end of text, argument missing"
+                    | _ ->
+                        read tableEnv OneArgument cs []
+                        |> Result.bind (fun (tableEnv, cs, atoms) ->
+                            collapse atoms |> argDict.AddRequired
+                            readArgsUntilId id tableEnv argDict cs)
+            let rec readOptionalArgsUntilId id tableEnv (argDict:LaTeXArgumentDictionary) cs =
+                match argDict.Optional id with
+                | ValueSome arg -> Ok (tableEnv, ValueSome arg, cs)
+                | ValueNone ->
+                    match cs with
+                    | '['::cs ->
+                        read tableEnv (Until ']') cs []
+                        |> Result.bind (fun (tableEnv, cs, atoms) ->
+                            collapse atoms |> argDict.AddOptional
+                            readOptionalArgsUntilId id tableEnv argDict cs)
+                    | _ -> Ok (tableEnv, ValueNone, cs)
+
+            ///<summary>
+            ///Looks for <see cref="Argument"/> and <see cref="Argument_Optional"/> and replaces them with arguments from LaTeX input
+            ///</summary>
+            let rec replaceArguments atom state =
+                //Not working...
+                //let replaceNp1 replaceN atomMaker (_, argDict, _ as state) atom = Result.bind (fun (tableEnv, atom', cs) -> replaceN (atomMaker atom') (tableEnv, argDict, cs)) (replaceArguments atom state)
+                let replace1 atomMaker state atom = Result.map (fun (tableEnv, atom', cs) -> (tableEnv, atomMaker atom', cs)) (replaceArguments atom state)
+                let replace2 atomMaker (_, argDict, _ as state) atom1 atom2 =
+                    Result.bind (fun (tableEnv, atom', cs) -> replace1 (atomMaker atom') (tableEnv, argDict, cs) atom2) (replaceArguments atom1 state)
+                //let replace3 atomMaker (_, argDict, _ as state) atom1 atom2 atom3 =
+                //    Result.bind (fun (tableEnv, atom', cs) -> replace2 (atomMaker atom') (tableEnv, argDict, cs) atom3 atom2) (replaceArguments atom1 state)
+                let replaceList argDict = List.mapFoldResult (fun struct(tableEnv, cs) arg ->
+                    replaceArguments arg (tableEnv, argDict, cs) |> Result.map (fun (tableEnv, result, cs) -> result, struct(tableEnv, cs)))
+                match atom with
+                | Argument id ->
+                    let tableEnv, argDict, cs = state
+                    readArgsUntilId id tableEnv argDict cs
+                | Argument_Optional (id, defaultValue) ->
+                    let tableEnv, argDict, cs = state
+                    match readOptionalArgsUntilId id tableEnv argDict cs with
+                    | Ok (tableEnv, ValueSome atom, cs) -> Ok (tableEnv, atom, cs)
+                    | Ok (tableEnv, ValueNone, cs) -> Ok (tableEnv, defaultValue, cs)
+                    | Error e -> Error e
+                | Row list ->
+                    let tableEnv, argDict, cs = state
+                    replaceList argDict struct(tableEnv, cs) list
+                    |> Result.map (fun (list, struct(tableEnv, cs)) -> tableEnv, Row list, cs)
+                | Number _ | Variable _ | UnaryOperator _ | Ordinary _
+                | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _
+                | LargeOperator _ | Punctuation _ | PlaceholderInput | Primes _ | Space _ as atom -> Ok (tableEnv, atom, cs)
+                | Fraction (num, den, nAlign, dAlign, thickness) -> replace2 (fun num den -> Fraction (num, den, nAlign, dAlign, thickness)) state num den
+                | Radical (degree, radicand) -> replace2 (fun degree radicand -> Radical (degree, radicand)) state degree radicand
+                | Superscripted atom -> replace1 Superscripted state atom
+                | Subscripted atom -> replace1 Subscripted state atom
+                | Offsetted (atom, x, y) -> replace1 (fun atom -> Offsetted(atom, x, y)) state atom
+                | Delimited (left, atom, right) -> replace1 (fun atom -> Delimited(left, atom, right)) state atom
+                | Underlined atom -> replace1 Underlined state atom
+                | Overlined atom -> replace1 Overlined state atom
+                | Accented (atom, accent) -> replace1 (fun atom -> Accented(atom, accent)) state atom
+                | Styled (atom, style) -> replace1 (fun atom -> Styled(atom, style)) state atom
+                | Colored (atom, color) -> replace1 (fun atom -> Colored(atom, color)) state atom
+                | Table (atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments) ->
+                    let tableEnv, argDict, cs = state
+                    List.mapFoldResult (replaceList argDict) struct(tableEnv, cs) atomss
+                    |> Result.map (fun (atomss, struct(tableEnv, cs)) -> tableEnv, Table(atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments), cs)
+            replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
+
+        let processCommand cmd cs =
+            match settings.Commands.TryGetValueFSharp cmd with
+            | true, atom -> processCommandAtom atom cs
+            | false, _ -> @"Unrecognized command: " + cmd |> Error
+
+        let continueReading (tableEnv, atom, cs) =
             let list = atom::list
             match until with
             | OneArgument -> (tableEnv, cs, list) |> Ok
             | _ -> read tableEnv until cs list
-        ///Processes 1 argument, then continues reading
-        let arg1 = argPlus1 arg0
-        ///Processes 2 arguments, then continues reading
-        let arg2 = argPlus1 arg1
-
-        let processCommand cmd cs =
-            match cmd with
-            | _ ->
-                match settings.Commands.TryGetValueFSharp cmd with
-                | true, atom ->
-                    let inline readArgUntil' readArgUntil id until argDict addToArgDict tableEnv cs = //Inline for tail recursive optimizations
-                        match read tableEnv until cs [] with
-                        | Ok (tableEnv, cs, atoms) ->
-                            collapse atoms |> addToArgDict
-                            readArgUntil id tableEnv argDict cs
-                        | Error e -> Error e
-                    let rec readArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
-                        match argDict.Required id with
-                        | ValueSome arg -> Ok (tableEnv, arg, cs)
-                        | ValueNone ->
-                            match cs with
-                            | '['::cs -> readArgUntil' readArgUntil id (Until ']') argDict argDict.AddRequired tableEnv cs
-                            | [] -> Error "Unexpected end of text, argument missing"
-                            | _ -> readArgUntil' readArgUntil id OneArgument argDict argDict.AddRequired tableEnv cs
-                    let rec readOptionalArgUntil id tableEnv (argDict:LaTeXArgumentDictionary) cs =
-                        match argDict.Optional id with
-                        | ValueSome arg -> Ok (tableEnv, ValueSome arg, cs)
-                        | ValueNone ->
-                            match cs with
-                            | '['::cs -> readArgUntil' readOptionalArgUntil id (Until ']') argDict argDict.AddOptional tableEnv cs
-                            | _ -> Ok (tableEnv, ValueNone, cs)
-
-                    let rec replaceArguments atom state =
-                        //Not working...
-                        //let replaceNp1 replaceN atomMaker (_, argDict, _ as state) atom = Result.bind (fun (tableEnv, atom', cs) -> replaceN (atomMaker atom') (tableEnv, argDict, cs)) (replaceArguments atom state)
-                        let replace1 atomMaker state atom = Result.map (fun (tableEnv, atom', cs) -> (tableEnv, atomMaker atom', cs)) (replaceArguments atom state)
-                        let replace2 atomMaker (_, argDict, _ as state) atom1 atom2 =
-                            Result.bind (fun (tableEnv, atom', cs) -> replace1 (atomMaker atom') (tableEnv, argDict, cs) atom2) (replaceArguments atom1 state)
-                        //let replace3 atomMaker (_, argDict, _ as state) atom1 atom2 atom3 =
-                        //    Result.bind (fun (tableEnv, atom', cs) -> replace2 (atomMaker atom') (tableEnv, argDict, cs) atom3 atom2) (replaceArguments atom1 state)
-                        let replaceList argDict = List.mapFoldResult (fun struct(tableEnv, cs) arg -> match replaceArguments arg (tableEnv, argDict, cs) with
-                                                                                                      | Ok (tableEnv, result, cs) -> Ok (result, struct(tableEnv, cs))
-                                                                                                      | Error e -> Error e)
-                        match atom with
-                        | Argument id ->
-                            let tableEnv, argDict, cs = state
-                            match readArgUntil id tableEnv argDict cs with
-                            | Ok (tableEnv, atom, cs) -> Ok (tableEnv, atom, cs)
-                            | Error e -> Error e
-                        | Argument_Optional (id, defaultValue) ->
-                            let tableEnv, argDict, cs = state
-                            match readOptionalArgUntil id tableEnv argDict cs with
-                            | Ok (tableEnv, ValueSome atom, cs) -> Ok (tableEnv, atom, cs)
-                            | Ok (tableEnv, ValueNone, cs) -> Ok (tableEnv, defaultValue, cs)
-                            | Error e -> Error e
-                        | Row list ->
-                            let tableEnv, argDict, cs = state
-                            match replaceList argDict struct(tableEnv, cs) list with
-                            | Ok (list, struct(tableEnv, cs)) -> Ok (tableEnv, Row list, cs)
-                            | Error e -> Error e
-                        | Number _ | Variable _ | UnaryOperator _ | Ordinary _
-                        | BinaryOperator _ | BinaryRelationalOperator _ | OpenBracket _ | CloseBracket _
-                        | LargeOperator _ | Punctuation _ | PlaceholderInput | Primes _ | Space _ as atom -> Ok (tableEnv, atom, cs)
-                        | Fraction (num, den, nAlign, dAlign, thickness) -> replace2 (fun num den -> Fraction (num, den, nAlign, dAlign, thickness)) state num den
-                        | Radical (degree, radicand) -> replace2 (fun degree radicand -> Radical (degree, radicand)) state degree radicand
-                        | Superscripted atom -> replace1 Superscripted state atom
-                        | Subscripted atom -> replace1 Subscripted state atom
-                        | Offsetted (atom, x, y) -> replace1 (fun atom -> Offsetted(atom, x, y)) state atom
-                        | Delimited (left, atom, right) -> replace1 (fun atom -> Delimited(left, atom, right)) state atom
-                        | Underlined atom -> replace1 Underlined state atom
-                        | Overlined atom -> replace1 Overlined state atom
-                        | Accented (atom, accent) -> replace1 (fun atom -> Accented(atom, accent)) state atom
-                        | Styled (atom, style) -> replace1 (fun atom -> Styled(atom, style)) state atom
-                        | Colored (atom, color) -> replace1 (fun atom -> Colored(atom, color)) state atom
-                        | Table (atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments) ->
-                            let tableEnv, argDict, cs = state
-                            match List.mapFoldResult (replaceList argDict) struct(tableEnv, cs) atomss with
-                            | Ok(atomss, struct(tableEnv, cs)) -> Ok(tableEnv, Table(atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments), cs)
-                            | Error e -> Error e
-                    replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
-                | false, _ -> @"Unrecognized command: " + cmd |> Error
-
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
         //* Use the arg functions!
 
@@ -169,19 +158,16 @@ let ToAtom (settings: Options) latex =
             | Until '}' -> "Missing closing brace" |> Error
             | Until c -> "Expected character not found: " + c.ToString() |> Error
         | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, List.rev list) |> Ok
-        | '\\'::CommandName (cmd, cs) ->
-            match processCommand cmd cs with
-            | Ok (tableEnv, atom, cs) -> arg0 cs atom
-            | Error e -> Error e
-        | '^'::cs -> arg1 cs Superscripted
-        | '_'::cs -> arg1 cs Subscripted
-        | '{'::cs -> readBlock (Until '}') Row arg0 cs
+        | '\\'::CommandName (cmd, cs) -> processCommand cmd cs |> Result.bind continueReading
+        | '^'::cs -> processCommandAtom (Superscripted (Argument 1)) cs |> Result.bind continueReading
+        | '_'::cs -> processCommandAtom (Subscripted (Argument 1)) cs |> Result.bind continueReading
+        | '{'::cs -> read tableEnv (Until '}') cs [] |> Result.bind (fun (tableEnv, cs, list) -> continueReading (tableEnv, Row list, cs))
         | '}'::_ -> Error "Missing opening brace"
         //| '&'::cs ->
         | '\''::cs ->
             let primes, cs = List.partitionWhile ((=) '\'') cs //primes do not include the one already matched
-            List.length primes + 1 |> Primes |> arg0 cs
-        | c::cs -> string c |> Ordinary |> arg0 cs
+            continueReading (tableEnv, List.length primes + 1 |> Primes, cs)
+        | c::cs -> continueReading (tableEnv, string c |> Ordinary, cs)
     match read ValueNone All (List.ofSeq latex) [] with
     | Ok (ValueNone, [], atoms)
     | Ok (ValueSome { Name = ValueNone }, [], atoms) ->
