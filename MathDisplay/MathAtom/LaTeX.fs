@@ -60,7 +60,7 @@ let ToAtom (settings: Options) latex =
                 //    | '&'::cs -> innerReadTable 
                 //)
         
-        let processCommandAtom atom cs =
+        let processAtom atom cs =
             let rec readArgsUntilId id tableEnv (argDict:LaTeXArgumentDictionary) cs =
                 match argDict.Required id with
                 | ValueSome arg -> Ok (tableEnv, arg, cs)
@@ -136,16 +136,17 @@ let ToAtom (settings: Options) latex =
                     |> Result.map (fun (atomss, struct(tableEnv, cs)) -> tableEnv, Table(atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments), cs)
             replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
 
-        let processCommand cmd cs =
-            match settings.Commands.TryGetValueFSharp cmd with
-            | true, atom -> processCommandAtom atom cs
-            | false, _ -> @"Unrecognized command: " + cmd |> Error
-
         let continueReading (tableEnv, atom, cs) =
             let list = atom::list
             match until with
             | OneArgument -> (tableEnv, cs, list) |> Ok
             | _ -> read tableEnv until cs list
+
+        let processAtomCommand cmd cs =
+            match settings.Commands.TryGetValueFSharp cmd with
+            | true, atom -> processAtom atom cs
+            | false, _ -> @"Unrecognized command: " + cmd |> Error
+
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
         //* Use the arg functions!
 
@@ -158,9 +159,23 @@ let ToAtom (settings: Options) latex =
             | Until '}' -> "Missing closing brace" |> Error
             | Until c -> "Expected character not found: " + c.ToString() |> Error
         | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, List.rev list) |> Ok
-        | '\\'::CommandName (cmd, cs) -> processCommand cmd cs |> Result.bind continueReading
-        | '^'::cs -> processCommandAtom (Superscripted (Argument 1)) cs |> Result.bind continueReading
-        | '_'::cs -> processCommandAtom (Subscripted (Argument 1)) cs |> Result.bind continueReading
+        | '\\'::CommandName (cmd, cs) ->
+            match cmd with
+            | "left" ->
+                readDelimiter cs
+                |> Result.bind (fun (left, cs) -> 
+                read tableEnv UntilRightDelimiter cs []
+                |> Result.bind (fun (tableEnv, cs, list) ->
+                readDelimiter cs
+                |> Result.bind (fun (right, cs) ->
+                continueReading (tableEnv, Delimited (left, collapse list, right), cs))))
+            | "right" ->
+                match until with
+                | UntilRightDelimiter -> (tableEnv, cs, List.rev list) |> Ok
+                | _ -> Error @"Missing \left"
+            | _ -> processAtomCommand cmd cs |> Result.bind continueReading
+        | '^'::cs -> processAtom (Superscripted (Argument 1)) cs |> Result.bind continueReading
+        | '_'::cs -> processAtom (Subscripted (Argument 1)) cs |> Result.bind continueReading
         | '{'::cs -> read tableEnv (Until '}') cs [] |> Result.bind (fun (tableEnv, cs, list) -> continueReading (tableEnv, Row list, cs))
         | '}'::_ -> Error "Missing opening brace"
         //| '&'::cs ->
