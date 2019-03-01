@@ -16,7 +16,7 @@ type TestClass () =
     [<Test>]
     member __.``Gather output`` () =
         let x =
-            @"\left.\frac\sqrt{23}4\right)"
+            @"\frac\left.\frac\sqrt{23}4\right)3"
             |> LaTeX.ToAtom LaTeX.Options.Default
         (match x with Ok r -> r | Error e -> InfoException e |> raise).ToString() |>
         Assert.Pass

@@ -13,7 +13,7 @@ type Options = {
     }
     
 
-[<Struct>] type internal Read = Until of char | UntilRightDelimiter | OneArgument | All
+[<Struct>] type internal Read = Until of char | UntilRightDelimiter | OneArgument | TableRows | All
 type TableEnvironment = { Name:string voption; Ended:bool; NumRows:int }
 exception ImplementationHasUnreadCharactersException of InputLaTeX:string * UnreadChars:char list * UnfinishedAtomList:MathAtom list
     with override this.Message = "The implementation has not read some characters yet, despite succeeding. The input LaTeX was: \n\n" + this.InputLaTeX
@@ -60,7 +60,7 @@ let ToAtom (settings: Options) latex =
                 //    | '&'::cs -> innerReadTable 
                 //)
         
-        let processAtom atom cs =
+        let processCommandAtom atom cs =
             let rec readArgsUntilId id tableEnv (argDict:LaTeXArgumentDictionary) cs =
                 match argDict.Required id with
                 | ValueSome arg -> Ok (tableEnv, arg, cs)
@@ -136,16 +136,16 @@ let ToAtom (settings: Options) latex =
                     |> Result.map (fun (atomss, struct(tableEnv, cs)) -> tableEnv, Table(atomss, interColumnSpacing, interRowAdditionalSpacing, columnAlignments), cs)
             replaceArguments atom (tableEnv, LaTeXArgumentDictionary(), cs)
 
+        let processAtomCommand cmd cs =
+            match settings.Commands.TryGetValueFSharp cmd with
+            | true, atom -> processCommandAtom atom cs
+            | false, _ -> @"Unrecognized command: " + cmd |> Error
+
         let continueReading (tableEnv, atom, cs) =
             let list = atom::list
             match until with
             | OneArgument -> (tableEnv, cs, list) |> Ok
             | _ -> read tableEnv until cs list
-
-        let processAtomCommand cmd cs =
-            match settings.Commands.TryGetValueFSharp cmd with
-            | true, atom -> processAtom atom cs
-            | false, _ -> @"Unrecognized command: " + cmd |> Error
 
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
         //* Use the arg functions!
@@ -173,16 +173,26 @@ let ToAtom (settings: Options) latex =
                 match until with
                 | UntilRightDelimiter -> (tableEnv, cs, List.rev list) |> Ok
                 | _ -> Error @"Missing \left"
+            | "begin" ->
+                readEnvironment cs
+                |> Result.bind (fun (env, cs) ->
+                let rec readRow tableEnv cs = function
+                | __WIP__
+                read (ValueSome { Name = ValueSome env; Ended = false; NumRows = 0 }) TableRows cs []
+                |> Result.bind (fun (tableEnv, cs, list) ->
+                match tableEnv with
+                | ValueSome { Ended = false } ->
+                )
             | _ -> processAtomCommand cmd cs |> Result.bind continueReading
-        | '^'::cs -> processAtom (Superscripted (Argument 1)) cs |> Result.bind continueReading
-        | '_'::cs -> processAtom (Subscripted (Argument 1)) cs |> Result.bind continueReading
+        | '^'::cs -> processCommandAtom (Superscripted (Argument 1)) cs |> Result.bind continueReading
+        | '_'::cs -> processCommandAtom (Subscripted (Argument 1)) cs |> Result.bind continueReading
         | '{'::cs -> read tableEnv (Until '}') cs [] |> Result.bind (fun (tableEnv, cs, list) -> continueReading (tableEnv, Row list, cs))
         | '}'::_ -> Error "Missing opening brace"
         //| '&'::cs ->
         | '\''::cs ->
             let primes, cs = List.partitionWhile ((=) '\'') cs //primes do not include the one already matched
             continueReading (tableEnv, List.length primes + 1 |> Primes, cs)
-        | c::cs -> continueReading (tableEnv, string c |> Ordinary, cs)
+        | PartitionAlphabets (text, cs) -> continueReading (tableEnv, System.String.Concat text |> Ordinary, cs)
     match read ValueNone All (List.ofSeq latex) [] with
     | Ok (ValueNone, [], atoms)
     | Ok (ValueSome { Name = ValueNone }, [], atoms) ->
