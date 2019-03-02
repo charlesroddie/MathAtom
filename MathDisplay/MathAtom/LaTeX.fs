@@ -176,9 +176,14 @@ let ToAtom (settings: Options) latex =
             | "begin" ->
                 readEnvironment cs
                 |> Result.bind (fun (env, cs) ->
-                let rec readRow tableEnv cs = function
-                | __WIP__
-                read (ValueSome { Name = ValueSome env; Ended = false; NumRows = 0 }) TableRows cs []
+                let rec readRows cs agg = function
+                | ValueSome { Ended = true } | ValueNone -> (cs, List.rev agg) |> Ok
+                | ValueSome { Ended = false } as tableEnv ->
+                    read tableEnv TableRows cs []
+                    |> Result.bind (fun (tableEnv, cs, list) ->
+                    readRows cs (list::agg) tableEnv
+                    )
+                readRows cs [] { Name = ValueSome env; Ended = false; NumRows = 0 }
                 |> Result.bind (fun (tableEnv, cs, list) ->
                 match tableEnv with
                 | ValueSome { Ended = false } ->
