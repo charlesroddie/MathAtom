@@ -3,7 +3,12 @@ open MathDisplay.DataTypes
 
 [<Struct>] type Accent = Accent of char
 [<Struct>] type Operator = Operator of char
-type Style = class end
+[<Struct>] type FontStyle = 
+               Default | Roman | Bold | Caligraphic
+               ///i.e. Monospace
+               | Typewriter | Italic | SansSerif | Fraktur | Blackboard | BoldItalic
+//LineStyle wrong, Size correct. See https://en.wikibooks.org/wiki/LaTeX/Advanced_Mathematics#Changing_font_size
+[<Struct>] type Size = Display | Text | Script | ScriptScript
 [<Struct>] type Delimiter = Delimiter of string
 
 [<Measure>] type mu
@@ -40,8 +45,9 @@ type MathAtom =
     | Primes of count:int
     //| Boundary (changed to Delimiter)
     | Space of float<mu>
-    ///Style changes during rendering
-    | Styled of MathAtom * Style
+    ///Size changes during rendering
+    | Resized of MathAtom * Size
+    | Styled of MathAtom * FontStyle
     //| Text of string -> | Ordinary of string
     | Colored of MathAtom * System.Drawing.Color
     ///A table. Not part of TeX.
