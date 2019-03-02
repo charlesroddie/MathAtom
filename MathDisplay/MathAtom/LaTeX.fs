@@ -14,7 +14,7 @@ type Options = {
     
 
 [<Struct>] type internal Read = Until of char | UntilRightDelimiter | OneArgument | TableRows | All
-type TableEnvironment = { Name:string voption; Ended:bool; NumRows:int }
+type TableEnvironment = { Name:string; Ended:bool; NumRows:int }
 exception ImplementationHasUnreadCharactersException of InputLaTeX:string * UnreadChars:char list * UnfinishedAtomList:MathAtom list
     with override this.Message = "The implementation has not read some characters yet, despite succeeding. The input LaTeX was: \n\n" + this.InputLaTeX
                                + "\n\nThe unread characters were: \n\n" + this.UnreadChars.ToString()
@@ -161,6 +161,7 @@ let ToAtom (settings: Options) latex =
         | c::cs when (match until with Until u -> c = u | _ -> false) -> (tableEnv, cs, List.rev list) |> Ok
         | '\\'::CommandName (cmd, cs) ->
             match cmd with
+            //Hardcoded special commands
             | "left" ->
                 readDelimiter cs
                 |> Result.bind (fun (left, cs) -> 
@@ -176,18 +177,15 @@ let ToAtom (settings: Options) latex =
             | "begin" ->
                 readEnvironment cs
                 |> Result.bind (fun (env, cs) ->
-                let rec readRows cs agg = function
-                | ValueSome { Ended = true } | ValueNone -> (cs, List.rev agg) |> Ok
-                | ValueSome { Ended = false } as tableEnv ->
-                    read tableEnv TableRows cs []
-                    |> Result.bind (fun (tableEnv, cs, list) ->
-                    readRows cs (list::agg) tableEnv
-                    )
-                readRows cs [] { Name = ValueSome env; Ended = false; NumRows = 0 }
-                |> Result.bind (fun (tableEnv, cs, list) ->
-                match tableEnv with
-                | ValueSome { Ended = false } ->
-                )
+                    let rec readRows cs agg = function
+                    | ValueSome { Ended = true } | ValueNone -> (cs, List.rev agg) |> Ok
+                    | ValueSome { Ended = false } as tableEnv ->
+                        read tableEnv TableRows cs []
+                        |> Result.bind (fun (tableEnv, cs, list) ->
+                        readRows cs (list::agg) tableEnv
+                        )
+                    readRows cs [] { Name = env; Ended = false; NumRows = 0 }
+                    |> Result.bind (fun (cs, rows) -> continueReading (tableEnv, cs, Table)
             | _ -> processAtomCommand cmd cs |> Result.bind continueReading
         | '^'::cs -> processCommandAtom (Superscripted (Argument 1)) cs |> Result.bind continueReading
         | '_'::cs -> processCommandAtom (Subscripted (Argument 1)) cs |> Result.bind continueReading

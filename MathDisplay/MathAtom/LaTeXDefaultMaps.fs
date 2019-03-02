@@ -3,7 +3,6 @@
 open MathDisplay.DataTypes
 
 //Use (Alt+Left mouse) drag to create multiple cursors so that spaces can be inputted simultaneously
-[<CompiledName "Delimiters">]
 let Delimiters =
    [".",           [],            "" // . means no delimiter
     "(",           [],            "("
@@ -32,16 +31,18 @@ let Delimiters =
     "rfloor",      [],            "\u230B"]
         
     |> aliasDictValueMap Delimiter
+    
+let Tables =
+    ["", 0, System.Int32.MaxValue, 0, 1, Seq.initInfinite (fun _ -> Alignment.Left)]
 
-[<CompiledName "MatrixEnvironments">]
-let matrixEnvironments =
+let MatrixEnvironments =
     ["matrix",  [], (".", ".")
      "pmatrix", [], ("(", ")")
      "bmatrix", [], ("[", "]")
      "Bmatrix", [], ("{", "}")
      "vmatrix", [], ("|", "|")
      "Vmatrix", [], ("||", "||")]
-    |> aliasDictValueMap (fun (l, r) -> (Delimiters.[l], Delimiters.[r]))
+    |> aliasDictValueMap (fun (l, r) -> Delimiters.[l], Delimiters.[r])
     
 let ``(charToAtom) <--- Unused for now....`` c =
     let (|Space|_|) s = if System.Char.IsControl s || System.Char.IsWhiteSpace s then Some Space else None
