@@ -27,14 +27,16 @@ type AliasDictionary<'X, 'Y when 'X : equality and 'Y : equality> private(d:Dict
             e.Add(value, primaryAlias)
             this.AddMore(secondaryAliases, value)
         | [] -> ()
-    member __.TryGetValueFSharp key = d.TryGetValue key
-    member __.TryGetKeyFSharp value = e.TryGetValue value
-    //TODO: fix conflicting naming of Item
-    member __.Item with get key = d.[key] and set key value = d.[key] <- value; e.[value] <- key
-    member __.Item with get value = e.[value] and set value key = d.[key] <- value; e.[value] <- key
+    member __.TryGetValue key =
+        match d.TryGetValue key with
+        | (true, v) -> Some v
+        | (false, _) -> None
+    member __.TryGetKey value =
+        match d.TryGetValue value with
+        | (true, v) -> Some v
+        | (false, _) -> None
     member private t.D = d
     member private d.E = e
-
     new(pairs:('X * ('X list) * 'Y) list) =
         let dict = AliasDictionary<'X, 'Y>()
         pairs |> List.iter (fun (primaryKey, secondaryKeys, value) ->
@@ -49,9 +51,3 @@ type AliasDictionary<'X, 'Y when 'X : equality and 'Y : equality> private(d:Dict
                 dict.Add(primaryKey, secondaryKeys, value)
             | [] -> ())
         AliasDictionary(dict.D, dict.E)
-
-    //new(map:'Y->'Z, pairs:seq<'X * seq<'X> * 'Y>) =
-    //    let dict = AliasDictionary<'X, 'Z>()
-    //    pairs |> Seq.iter (fun (primaryKey, secondaryKeys, value) ->
-    //        dict.Add(primaryKey, secondaryKeys, map value))
-    //    AliasDictionary(dict.D, dict.E)

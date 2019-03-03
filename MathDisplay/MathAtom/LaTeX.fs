@@ -37,14 +37,14 @@ let ToAtom (settings: Options) latex =
             | [] -> errorArgMissing
             | '\\'::CommandName(cmd, cs) ->
                 let cmd = match cmd with "|" -> "||" | _ -> cmd
-                match settings.Delimiters.TryGetValueFSharp cmd with
-                | true, v -> Ok (v, cs)
-                | false, _ -> errorDelimMissing cmd
+                match settings.Delimiters.TryGetValue cmd with
+                | Some v -> Ok (v, cs)
+                | None -> errorDelimMissing cmd
             | c::cs ->
                 let c = string c
-                match settings.Delimiters.TryGetValueFSharp c with
-                | true, v -> Ok (v, cs)
-                | false, _ -> errorDelimMissing c
+                match settings.Delimiters.TryGetValue c with
+                | Some v -> Ok (v, cs)
+                | None -> errorDelimMissing c
         ///Reads an environment
         let readEnvironment cs =
             match cs with
@@ -143,9 +143,9 @@ let ToAtom (settings: Options) latex =
             | _ -> read tableEnv until cs list
 
         let processAtomCommand cmd cs =
-            match settings.Commands.TryGetValueFSharp cmd with
-            | true, atom -> processAtom atom cs
-            | false, _ -> @"Unrecognized command: " + cmd |> Error
+            match settings.Commands.TryGetValue cmd with
+            | Some atom -> processAtom atom cs
+            | None -> @"Unrecognized command: " + cmd |> Error
 
         //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
         //* Use the arg functions!
