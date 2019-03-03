@@ -23,7 +23,8 @@ exception ImplementationHasUnreadCharactersException of InputLaTeX:string * Unre
 let ToAtom (settings: Options) latex =
     let errorArgMissing = Error "Unexpected end of input, missing argument"
     let errorDelimMissing cmd = Error (cmd + " was not found in delimiter map")
-    let collapse xs = match xs with [x] -> x | x -> Row x
+    /// Simplifies a Row by replacing a Row with a single item x with x.
+    let collapseRow(xs:MathAtom list) = match xs with [x] -> x | x -> Row x
     let skipSpaces cs = List.skipWhile System.Char.IsWhiteSpace cs
     let isAlphabet c = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
     let (|PartitionAlphabets|) cs = List.partitionWhile isAlphabet cs
@@ -69,13 +70,13 @@ let ToAtom (settings: Options) latex =
                     | '['::cs ->
                         read tableEnv (Until ']') cs []
                         |> Result.bind (fun (tableEnv, cs, atoms) ->
-                            collapse atoms |> argDict.AddOptional
+                            collapseRow atoms |> argDict.AddOptional
                             readArgsUntilId id tableEnv argDict cs)
                     | [] -> Error "Unexpected end of text, argument missing"
                     | _ ->
                         read tableEnv OneArgument cs []
                         |> Result.bind (fun (tableEnv, cs, atoms) ->
-                            collapse atoms |> argDict.AddRequired
+                            collapseRow atoms |> argDict.AddRequired
                             readArgsUntilId id tableEnv argDict cs)
             let rec readOptionalArgsUntilId id tableEnv (argDict:LaTeXArgumentDictionary) cs =
                 match argDict.Optional id with
@@ -85,7 +86,7 @@ let ToAtom (settings: Options) latex =
                     | '['::cs ->
                         read tableEnv (Until ']') cs []
                         |> Result.bind (fun (tableEnv, cs, atoms) ->
-                            collapse atoms |> argDict.AddOptional
+                            collapseRow atoms |> argDict.AddOptional
                             readOptionalArgsUntilId id tableEnv argDict cs)
                     | _ -> Ok (tableEnv, ValueNone, cs)
 
@@ -168,7 +169,7 @@ let ToAtom (settings: Options) latex =
                 |> Result.bind (fun (tableEnv, cs, list) ->
                 readDelimiter cs
                 |> Result.bind (fun (right, cs) ->
-                continueReading (tableEnv, Delimited (left, collapse list, right), cs))))
+                continueReading (tableEnv, Delimited (left, collapseRow list, right), cs))))
             | "right" ->
                 match until with
                 | UntilRightDelimiter -> (tableEnv, cs, List.rev list) |> Ok
@@ -186,7 +187,7 @@ let ToAtom (settings: Options) latex =
     match read ValueNone All (List.ofSeq latex) [] with
     | Ok (ValueNone, [], atoms)
     | Ok (ValueSome { Name = ValueNone }, [], atoms) ->
-        collapse atoms |> Ok
+        collapseRow atoms |> Ok
     | Ok (ValueSome { Name = ValueSome envName }, [], _) ->
         (@"Missing \end{" + envName + "}") |> Error
     | Error e -> Error e
