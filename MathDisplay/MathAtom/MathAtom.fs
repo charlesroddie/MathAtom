@@ -4,7 +4,58 @@ open MathDisplay.DataTypes
 [<Struct>] type Accent = Accent of char
 [<Struct>] type Operator = Operator of char
 type Style = class end
-[<Struct>] type Delimiter = Delimiter of string
+[<Struct>][<RequireQualifiedAccess>]
+type Delimiter =
+    | Empty
+    | LBracket
+    | RBracket
+    | LSquareBracket
+    | RSquareBracket
+    | LCurlyBracket
+    | RCurlyBracket
+    | LAngle
+    | RAngle
+    | ForwardSlash
+    | BackSlash
+    | Vert
+    | DoubleVert
+    | UpArrow
+    | DownArrow
+    | DoubleUpArrow
+    | DoubleDownArrow
+    | UpDownArrow
+    | LGroup
+    | RGroup
+    | LCeil
+    | RCeil
+    | LFloor
+    | RFloor
+    member t.Char =
+        match t with
+        | Empty -> ""
+        | LBracket -> "("
+        | RBracket -> ")"
+        | LSquareBracket -> "["
+        | RSquareBracket -> "]"
+        | LCurlyBracket -> "{"
+        | RCurlyBracket -> "}"
+        | LAngle -> "\u2329"
+        | RAngle -> "\u232A"
+        | ForwardSlash -> "/"
+        | BackSlash -> "\\"
+        | Vert -> "|"
+        | DoubleVert -> "\u2016"
+        | UpArrow -> "\u2191"
+        | DownArrow -> "\u2193"
+        | DoubleUpArrow -> "\u21D1"
+        | DoubleDownArrow -> "\u21D3"
+        | UpDownArrow -> "\u21D5"
+        | LGroup -> "\u27EE"
+        | RGroup -> "\u27EF"
+        | LCeil -> "\u2308"
+        | RCeil -> "\u2309"
+        | LFloor -> "\u230A"
+        | RFloor -> "\u230B"
 
 [<Measure>] type mu
 
