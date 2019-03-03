@@ -10,6 +10,7 @@ module MathDisplay.DataTypes.List
       | xs -> List.rev acc, xs
     loop []
     
+  // TODO: What is this? Simplify type signature and document, or remove
   let mapFoldResult f (state:'State) (list: 'T list) : Result<'Result list * 'State, 'Error> =
     let rec loop acc state = function
       | [] -> (List.rev acc, state) |> Ok

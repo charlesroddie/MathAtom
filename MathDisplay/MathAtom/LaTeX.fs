@@ -25,7 +25,7 @@ let ToAtom (settings: Options) latex =
     let errorDelimMissing cmd = Error (cmd + " was not found in delimiter map")
     /// Simplifies a Row by replacing a Row with a single item x with x.
     let collapseRow(xs:MathAtom list) = match xs with [x] -> x | x -> Row x
-    let skipSpaces cs = List.skipWhile System.Char.IsWhiteSpace cs
+    let skipSpaces = List.skipWhile System.Char.IsWhiteSpace
     let isAlphabet c = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
     let (|PartitionAlphabets|) cs = List.partitionWhile isAlphabet cs
     let (|CommandName|) cs = match cs with
