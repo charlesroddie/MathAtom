@@ -46,3 +46,4 @@ type AliasDictionary<'X, 'Y when 'X : equality and 'Y : equality> private(d:Dict
                 dict.Add(primaryKey, secondaryKeys, value)
             | [] -> ())
         AliasDictionary(dict.D, dict.E)
+    member __.Aliases = d.Keys
