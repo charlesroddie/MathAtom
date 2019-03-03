@@ -37,11 +37,6 @@ type AliasDictionary<'X, 'Y when 'X : equality and 'Y : equality> private(d:Dict
         | (false, _) -> None
     member private t.D = d
     member private d.E = e
-    new(pairs:('X * ('X list) * 'Y) list) =
-        let dict = AliasDictionary<'X, 'Y>()
-        pairs |> List.iter (fun (primaryKey, secondaryKeys, value) ->
-            dict.Add(primaryKey, secondaryKeys, value))
-        AliasDictionary(dict.D, dict.E)
     /// The first of any 'X list is primary.
     new(pairs:('X list * 'Y) list) =
         let dict = AliasDictionary<'X, 'Y>()

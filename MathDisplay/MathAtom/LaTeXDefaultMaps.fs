@@ -33,12 +33,12 @@ let Delimiters =
     |> AliasDictionary
 
 let MatrixEnvironments =
-    ["matrix",  [], (Delimiter.Empty, Delimiter.Empty)
-     "pmatrix", [], (Delimiter.LBracket, Delimiter.RBracket)
-     "bmatrix", [], (Delimiter.LBracket, Delimiter.RBracket)
-     "Bmatrix", [], (Delimiter.LCurlyBracket, Delimiter.RCurlyBracket)
-     "vmatrix", [], (Delimiter.Vert, Delimiter.Vert)
-     "Vmatrix", [], (Delimiter.DoubleVert, Delimiter.DoubleVert)]
+    [   ["matrix"], (Delimiter.Empty, Delimiter.Empty)
+        ["pmatrix"], (Delimiter.LBracket, Delimiter.RBracket)
+        ["bmatrix"], (Delimiter.LBracket, Delimiter.RBracket)
+        ["Bmatrix"], (Delimiter.LCurlyBracket, Delimiter.RCurlyBracket)
+        ["vmatrix"], (Delimiter.Vert, Delimiter.Vert)
+        ["Vmatrix"], (Delimiter.DoubleVert, Delimiter.DoubleVert)]
     |> AliasDictionary
     
 let ``(charToAtom) <--- Unused for now....`` c =
@@ -58,7 +58,7 @@ let ``(charToAtom) <--- Unused for now....`` c =
     | '"' | '/' | '@' | '`' | '|' | _ -> string c |> Ordinary |> ValueSome
     
 let Commands =
-    [["frac"], Fraction (Argument 1, Argument 2, Center, Center, ValueNone)
-     ["sqrt"], Radical (Argument_Optional (1, Row []), Argument 1)
-     ["1"], Ordinary "1"]
+    [   ["frac"], Fraction (Argument 1, Argument 2, Center, Center, ValueNone)
+        ["sqrt"], Radical (Argument_Optional (1, Row []), Argument 1)
+        ["1"], Ordinary "1"]
     |> AliasDictionary
