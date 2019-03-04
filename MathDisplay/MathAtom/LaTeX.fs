@@ -174,8 +174,8 @@ let ToAtom (settings: Options) latex =
                 match until with
                 | UntilRightDelimiter -> (tableEnv, cs, List.rev list) |> Ok
                 | _ -> Error @"Missing \left"
-            | "begin" ->
-                readEnvironment cs
+            | "begin" -> failwith ""
+                (*readEnvironment cs
                 |> Result.bind (fun (env, cs) ->
                     let rec readRows cs agg = function
                     | ValueSome { Ended = true } | ValueNone -> (cs, List.rev agg) |> Ok
@@ -185,7 +185,7 @@ let ToAtom (settings: Options) latex =
                         readRows cs (list::agg) tableEnv
                         )
                     readRows cs [] { Name = env; Ended = false; NumRows = 0 }
-                    |> Result.bind (fun (cs, rows) -> continueReading (tableEnv, cs, Table)
+                    |> Result.bind (fun (cs, rows) -> continueReading (tableEnv, cs, Table)*)
             | _ -> processAtomCommand cmd cs |> Result.bind continueReading
         | '^'::cs -> processCommandAtom (Superscripted (Argument 1)) cs |> Result.bind continueReading
         | '_'::cs -> processCommandAtom (Subscripted (Argument 1)) cs |> Result.bind continueReading
@@ -198,9 +198,9 @@ let ToAtom (settings: Options) latex =
         | PartitionAlphabets (text, cs) -> continueReading (tableEnv, System.String.Concat text |> Ordinary, cs)
     match read ValueNone All (List.ofSeq latex) [] with
     | Ok (ValueNone, [], atoms)
-    | Ok (ValueSome { Name = ValueNone }, [], atoms) ->
+    | Ok (ValueSome { Name = "" }, [], atoms) ->
         collapse atoms |> Ok
-    | Ok (ValueSome { Name = ValueSome envName }, [], _) ->
+    | Ok (ValueSome { Name = envName }, [], _) ->
         (@"Missing \end{" + envName + "}") |> Error
     | Error e -> Error e
     | Ok (_, unreadChars, atoms) -> ImplementationHasUnreadCharactersException (latex, unreadChars, atoms) |> raise

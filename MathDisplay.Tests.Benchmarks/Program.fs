@@ -3,7 +3,9 @@ module Program =
         printfn "Benchmark started."
         printfn "Press Enter to run..."
         System.Console.ReadLine() |> ignore
-        BenchmarkDotNet.Running.BenchmarkRunner.Run<MathDisplay.Tests.Benchmarks.MapBenchmark>() |> ignore
+        BenchmarkDotNet.Running.BenchmarkRunner.Run<MathDisplay.Tests.Benchmarks.
+            Result_ExceptionBenchmark
+            >() |> ignore
         printfn ""
         printfn "Benchmark ended."
         printfn "Press any key to continue..."

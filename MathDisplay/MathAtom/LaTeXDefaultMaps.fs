@@ -34,9 +34,9 @@ let Delimiters =
     
 [<Struct>] type SetSize = NoChange | ToText
 let Tables =
-    ["", [], (0, System.Int32.MaxValue, 0, 1, Seq.initInfinite (fun _ -> Alignment.Left), )
+    ["", [], (0, System.Int32.MaxValue, 0, 1, Seq.initInfinite (fun _ -> Alignment.Left))
      "matrix", [], (0, System.Int32.MaxValue, 0, 1, Seq.initInfinite (fun _ -> Alignment.Left))
-     ]
+     ] |> aliasDict
 
 let MatrixEnvironments =
     ["matrix",  [], (".", ".")

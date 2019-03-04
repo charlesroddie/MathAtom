@@ -4,15 +4,20 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <OutputType>Exe</OutputType>
     <Configurations>Release</Configurations>
+    <RunPostBuildEvent>1</RunPostBuildEvent>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="RunBenchmark.bat" />
     <Compile Include="MapBenchmark.fs" />
     <Compile Include="AliasMap.fs" />
     <Compile Include="BiDictionary.fs" />
     <Compile Include="AliasMapBenchmark.fs" />
+    <Compile Include="Result_ExceptionBenchmark.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+
+  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.11.3" />
