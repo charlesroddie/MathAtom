@@ -8,6 +8,7 @@ open System.Collections.Generic
 /// but there is a primary alias corresponding to each e-key (so e is injective).
 type AliasDictionary<'X, 'Y when 'X : equality and 'Y : equality> private(d:Dictionary<'X,'Y>, e:Dictionary<'Y,'X>) =
     new() = AliasDictionary(Dictionary<'X, 'Y>(), Dictionary<'Y, 'X>())
+    member __.Aliases = d.Keys
     /// Add primary aliases
     member __.AddPrimary(primaryAlias:'X, value:'Y) =
         d.Add(primaryAlias, value)
@@ -27,23 +28,26 @@ type AliasDictionary<'X, 'Y when 'X : equality and 'Y : equality> private(d:Dict
             e.Add(value, primaryAlias)
             this.AddMore(secondaryAliases, value)
         | [] -> ()
-    member __.TryGetValue key =
-        match d.TryGetValue key with
-        | (true, v) -> Some v
-        | (false, _) -> None
-    member __.TryGetKey value =
-        match d.TryGetValue value with
-        | (true, v) -> Some v
-        | (false, _) -> None
-    member private t.D = d
-    member private d.E = e
     /// The first of any 'X list is primary.
-    new(pairs:('X list * 'Y) list) =
-        let dict = AliasDictionary<'X, 'Y>()
+    member this.AddList(pairs:('X list * 'Y) list) =
         pairs |> List.iter (fun (keys, value) ->
             match keys with
             | primaryKey::secondaryKeys ->
-                dict.Add(primaryKey, secondaryKeys, value)
+                this.Add(primaryKey, secondaryKeys, value)
             | [] -> ())
-        AliasDictionary(dict.D, dict.E)
-    member __.Aliases = d.Keys
+    /// The first of any 'X list is primary.
+    new(pairs:('X list * 'Y) list) as this =
+        AliasDictionary<'X, 'Y>() then
+        this.AddList pairs
+    /// The first of any 'X list is primary.
+    new(valueComparer:IEqualityComparer<'Y>, pairs:('X list * 'Y) list) as this =
+        AliasDictionary<'X, 'Y>(Dictionary<'X, 'Y>(), Dictionary<'Y, 'X>(valueComparer)) then
+        this.AddList pairs
+    member __.TryGetKey value =
+        match e.TryGetValue value with
+        | (true, v) -> ValueSome v
+        | (false, _) -> ValueNone
+    member __.TryGetValue key =
+        match d.TryGetValue key with
+        | (true, v) -> ValueSome v
+        | (false, _) -> ValueNone

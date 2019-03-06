@@ -39,13 +39,13 @@ let ToAtom (settings: Options) latex =
             | '\\'::CommandName(cmd, cs) ->
                 let cmd = match cmd with "|" -> "||" | _ -> cmd
                 match settings.Delimiters.TryGetValue cmd with
-                | Some v -> Ok (v, cs)
-                | None -> errorDelimMissing cmd
+                | ValueSome v -> Ok (v, cs)
+                | ValueNone -> errorDelimMissing cmd
             | c::cs ->
                 let c = string c
                 match settings.Delimiters.TryGetValue c with
-                | Some v -> Ok (v, cs)
-                | None -> errorDelimMissing c
+                | ValueSome v -> Ok (v, cs)
+                | ValueNone -> errorDelimMissing c
         ///Reads an environment
         let readEnvironment cs =
             match cs with
@@ -145,11 +145,8 @@ let ToAtom (settings: Options) latex =
 
         let processAtomCommand cmd cs =
             match settings.Commands.TryGetValue cmd with
-            | Some atom -> processAtom atom cs
-            | None -> @"Unrecognized command: " + cmd |> Error
-
-        //* No calls to read in this function after this point or you risk ImplementationHasUnreadCharactersException *
-        //* Use the arg functions!
+            | ValueSome atom -> processAtom atom cs
+            | ValueNone -> @"Unrecognized command: " + cmd |> Error
 
         match skipSpaces cs with
         | [] ->
@@ -192,3 +189,4 @@ let ToAtom (settings: Options) latex =
         (@"Missing \end{" + envName + "}") |> Error
     | Error e -> Error e
     | Ok (_, unreadChars, atoms) -> ImplementationHasUnreadCharactersException (latex, unreadChars, atoms) |> raise
+    

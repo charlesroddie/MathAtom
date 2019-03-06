@@ -4,7 +4,7 @@ open MathDisplay.DataTypes
 [<Struct>] type Accent = Accent of char
 [<Struct>] type Operator = Operator of char
 type Style = class end
-[<Struct>][<RequireQualifiedAccess>]
+[<Struct; RequireQualifiedAccess>]
 type Delimiter =
     | Empty
     | LBracket
@@ -97,3 +97,4 @@ type MathAtom =
     | Colored of MathAtom * System.Drawing.Color
     ///A table. Not part of TeX.
     | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list
+    
