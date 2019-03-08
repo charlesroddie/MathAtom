@@ -45,9 +45,9 @@ type AliasDictionary<'X, 'Y when 'X : equality and 'Y : equality> private(d:Dict
         this.AddList pairs
     member __.TryGetKey value =
         match e.TryGetValue value with
-        | (true, v) -> ValueSome v
-        | (false, _) -> ValueNone
+        | true, v -> ValueSome v
+        | false, _ -> ValueNone
     member __.TryGetValue key =
         match d.TryGetValue key with
-        | (true, v) -> ValueSome v
-        | (false, _) -> ValueNone
+        | true, v -> ValueSome v
+        | false, _ -> ValueNone

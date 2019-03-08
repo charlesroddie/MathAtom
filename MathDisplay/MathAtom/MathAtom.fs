@@ -98,3 +98,17 @@ type MathAtom =
     ///A table. Not part of TeX.
     | Table of MathAtom list list * interColumnSpacing:float<mu> * interRowAdditionalSpacing:float<mu> * columnAlignments: Alignment list
     
+type MathAtomPatternMatcher() =
+    interface System.Collections.Generic.IEqualityComparer<MathAtom> with
+        member __.GetHashCode x =
+            match x with
+            //Cannot contain Arguments
+            | Number _ | Variable _ | UnaryOperator _ | Ordinary _ 
+            | LargeOperator _ | BinaryOperator _ | BinaryRelationalOperator _  | OpenBracket _  | CloseBracket _
+            | Punctuation _ | PlaceholderInput | Primes _ | Space _
+                as x -> let h = hash x in if h = 0 then -1 else h
+            //Can contain Arguments, put in same bucket for linear search
+            | Argument _ | Argument_Optional _ | Row _ | Fraction _ | Radical _ | Superscripted _
+            | Subscripted _ | Offsetted _ | Delimited _ | Underlined _ | Overlined _ | Accented _ | Styled _ | Colored _ | Table _
+                -> 0
+        member __.Equals(x, y) = false
