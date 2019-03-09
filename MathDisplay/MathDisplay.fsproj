@@ -12,9 +12,10 @@
 
   <ItemGroup>
     <Compile Include="DataTypes\ListExtensions.fs" />
-    <Compile Include="DataTypes\AliasMap.fs" />
+    <Compile Include="DataTypes\AliasDictionary.fs" />
     <Compile Include="DataTypes\Structures.fs" />
     <Compile Include="MathAtom\MathAtom.fs" />
+    <Compile Include="MathAtom\LaTeXArgumentDictionary.fs" />
     <Compile Include="MathAtom\LaTeXDefaultMaps.fs" />
     <Compile Include="MathAtom\LaTeX.fs" />
   </ItemGroup>

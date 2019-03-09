@@ -19,7 +19,7 @@ type AliasMap<'Key, 'Value when 'Key : comparison and 'Value : comparison> =
     interface System.Collections.IEnumerable with
         member this.GetEnumerator() = (AliasMap.toSeq this :> System.Collections.IEnumerable).GetEnumerator()
     interface System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<'Key, 'Value>> with
-        member this.GetEnumerator() = match this with | AliasMap (k2v, _) -> (k2v :> System.Collections.Generic.IEnumerable<_>).GetEnumerator()
+        member this.GetEnumerator() = match this with AliasMap (k2v, _) -> (k2v :> System.Collections.Generic.IEnumerable<_>).GetEnumerator()
     interface System.Collections.Generic.IReadOnlyCollection<System.Collections.Generic.KeyValuePair<'Key, 'Value>> with
         member this.Count = AliasMap.count this
     interface System.Collections.Generic.IReadOnlyDictionary<'Key, 'Value> with
@@ -93,12 +93,3 @@ module AliasMap =
     let ofListWithValueMap valueMap list = ofListWtihKeyKeysValueMap id id valueMap list
     /// Takes a list of (Primary key you get by indexing with the value, Other keys, Value)
     let ofListWithKeyValueMap keyMap valueMap list = ofListWtihKeyKeysValueMap keyMap (List.map keyMap) valueMap list
-
-type INT = INT of int
-type L() =
-    class
-        member __.Item with get(f : INT) = f
-        member __.Item with get(f : int) = f
-        static member IUEWOKJU(this : L) = this.[1]
-    end
-   

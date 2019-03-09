@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Compile Include="MapBenchmark.fs" />
+    <Compile Include="AliasMap.fs" />
     <Compile Include="BiDictionary.fs" />
     <Compile Include="AliasMapBenchmark.fs" />
     <Compile Include="Program.fs" />

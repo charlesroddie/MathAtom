@@ -3,48 +3,45 @@
 open MathDisplay.DataTypes
 
 //Use (Alt+Left mouse) drag to create multiple cursors so that spaces can be inputted simultaneously
-[<CompiledName "Delimiters">]
-let delimiters =
-   [".",           [],            "" // . means no delimiter
-    "(",           [],            "("
-    ")",           [],            ")"
-    "[",           [],            "["
-    "]",           [],            "]"
-    "{",           ["lbrace"],    "{"
-    "}",           ["rbrace"],    "}"
-    "<",           ["langle"],    "\u2329"
-    ">",           ["rangle"],    "\u232A"
-    "/",           [],            "/"
-    "\\",          ["backslash"], "\\"
-    "|",           ["vert"],      "|"
-    "||",          ["Vert"],      "\u2016"
-    "uparrow",     [],            "\u2191"
-    "downarrow",   [],            "\u2193"
-    "updownarrow", [],            "\u2195"
-    "Uparrow",     [],            "\u21D1"
-    "Downarrow",   [],            "\u21D3"
-    "Updownarrow", [],            "\u21D5"
-    "lgroup",      [],            "\u27EE"
-    "rgroup",      [],            "\u27EF"
-    "lceil",       [],            "\u2308"
-    "rceil",       [],            "\u2309"
-    "lfloor",      [],            "\u230A"
-    "rfloor",      [],            "\u230B"]
+let Delimiters =
+    [   ["."], Delimiter.Empty // . means no delimiter
+        ["("], Delimiter.LBracket
+        [")"], Delimiter.RBracket
+        ["["], Delimiter.LSquareBracket
+        ["]"], Delimiter.RSquareBracket
+        ["{";"lbrace"], Delimiter.LCurlyBracket
+        ["}";"rbrace"], Delimiter.RCurlyBracket
+        ["<";"langle"], Delimiter.LAngle
+        [">";"rangle"], Delimiter.RAngle
+        ["/"], Delimiter.ForwardSlash
+        ["\\";"backslash"], Delimiter.BackSlash
+        ["|";"vert"], Delimiter.Vert
+        ["||";"Vert"], Delimiter.DoubleVert
+        ["uparrow"], Delimiter.UpArrow
+        ["downarrow"], Delimiter.DownArrow
+        ["updownarrow"], Delimiter.UpDownArrow
+        ["Uparrow"], Delimiter.UpArrow
+        ["Downarrow"], Delimiter.DoubleDownArrow
+        ["Updownarrow"], Delimiter.UpDownArrow
+        ["lgroup"], Delimiter.LGroup
+        ["rgroup"], Delimiter.RGroup
+        ["lceil"], Delimiter.LCeil
+        ["rceil"], Delimiter.RCeil
+        ["lfloor"], Delimiter.LFloor
+        ["rfloor"], Delimiter.RFloor]
         
-    |> AliasMap.ofListWithValueMap Delimiter
+    |> AliasDictionary
 
-[<CompiledName "MatrixEnvironments">]
-let matrixEnvironments =
-    ["matrix",  [], (".", ".")
-     "pmatrix", [], ("(", ")")
-     "bmatrix", [], ("[", "]")
-     "Bmatrix", [], ("{", "}")
-     "vmatrix", [], ("|", "|")
-     "Vmatrix", [], ("||", "||")]
-    |> AliasMap.ofListWithValueMap (fun (l, r) -> (Option.get delimiters.[l], Option.get delimiters.[r]))
-
-[<CompiledName "CharToAtom">]
-let charToAtom c =
+let MatrixEnvironments =
+    [   ["matrix"], (Delimiter.Empty, Delimiter.Empty)
+        ["pmatrix"], (Delimiter.LBracket, Delimiter.RBracket)
+        ["bmatrix"], (Delimiter.LBracket, Delimiter.RBracket)
+        ["Bmatrix"], (Delimiter.LCurlyBracket, Delimiter.RCurlyBracket)
+        ["vmatrix"], (Delimiter.Vert, Delimiter.Vert)
+        ["Vmatrix"], (Delimiter.DoubleVert, Delimiter.DoubleVert)]
+    |> AliasDictionary
+    
+let ``(charToAtom) <--- Unused for now....`` c =
     let (|Space|_|) s = if System.Char.IsControl s || System.Char.IsWhiteSpace s then Some Space else None
     match c with
     | _ when '0' <= c && c <= '9' -> string c |> Number |> ValueSome
@@ -59,3 +56,9 @@ let charToAtom c =
     | '-' | '\u2212' -> BinaryOperator '\u2212' |> ValueSome // use the math minus sign
     | '.' -> string c |> Number |> ValueSome
     | '"' | '/' | '@' | '`' | '|' | _ -> string c |> Ordinary |> ValueSome
+    
+let Commands =
+    [   ["frac"], Fraction (Argument 1, Argument 2, Center, Center, ValueNone)
+        ["sqrt"], Radical (Argument_Optional (1, Row []), Argument 1)
+        ["1"], Ordinary "1"]
+    |> AliasDictionary
