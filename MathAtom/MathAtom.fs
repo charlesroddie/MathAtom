@@ -9,6 +9,12 @@ type Style = class end
 [<Measure>] type mu
 
 [<RequireQualifiedAccess>]
+type Decoration =
+    | Underlined
+    | Overlined
+    | Accented of Accent
+
+[<RequireQualifiedAccess>]
 type MathAtom =
     | Row of MathAtom list
     (*| Ordinary = Number | Variable | UnaryOperator*)
@@ -27,12 +33,10 @@ type MathAtom =
     | Radical of degree:MathAtom voption * radicand:MathAtom
     | Punctuation of char
     | PlaceholderInput
-    | Scripts of baseAtom:MathAtom * superscript:MathAtom * subscript:MathAtom
+    | Scripts of baseAtom:MathAtom * superscript:MathAtom voption * subscript:MathAtom voption
     //| Offsetted of x:float * y:float
     | Delimited of left:Delimiter * atom:MathAtom * right:Delimiter
-    | Underlined of MathAtom
-    | Overlined of MathAtom
-    | Accented of MathAtom * Accent
+    | Decorated of Decoration * MathAtom
     | Primes of count:int
     //| Boundary (changed to Delimiter)
     //| Space of float<mu>
@@ -63,17 +67,67 @@ type AtomIndexStep =
             ValueSome n
         | MathAtom.Fraction(_,d,_,_,_), Denominator ->
             ValueSome d
-        | MathAtom.Radical(_,r), BaseAtom ->
-            ValueSome r
-        | MathAtom.Scripts(b,_,_), BaseAtom ->
-            ValueSome b
+        | MathAtom.Radical(_,b), BaseAtom
+        | MathAtom.Scripts(b,_,_), BaseAtom
+        | MathAtom.Delimited(_,b,_), BaseAtom
+        | MathAtom.Decorated(_,b), BaseAtom
+            -> ValueSome b
         | MathAtom.Scripts(_,superscript,_), Superscript ->
-            ValueSome superscript
+            superscript
         | MathAtom.Scripts(_,_,subscript), Subscript ->
-            ValueSome subscript
+            subscript
+        | MathAtom.LargeOperator(_,lowerLimit,_), Subscript ->
+            lowerLimit
+        | MathAtom.LargeOperator(_,_,upperLimit), Superscript ->
+            upperLimit
         | MathAtom.Radical(d,_), Subscript ->
             d
         | _ -> ValueNone
+    /// Immediate subatoms of a MathAtom, together with AtomIndexSteps
+    static member internal SubAtomsWithAtomIndexSteps(ma:MathAtom) =
+        match ma with
+        | MathAtom.Row l ->
+            l |> List.mapi (fun i atom -> (atom, RowIndex i))
+        | MathAtom.LargeOperator(_,ll,ul) ->
+            [   match ll with
+                | ValueSome a -> yield (a, Subscript)
+                | ValueNone -> ()
+                match ul with
+                | ValueSome a -> yield (a, Superscript)
+                | ValueNone -> ()
+            ]
+        | MathAtom.Fraction(n,d,_,_,_) ->
+            [ (n, Numerator); (d, Denominator) ]
+        | MathAtom.Radical(degree, radicand) ->
+            [   match degree with
+                | ValueSome a -> yield (a, RadicalDegree)
+                | ValueNone -> ()
+                yield (radicand, BaseAtom)
+            ]
+        | MathAtom.Scripts(baseAtom, superscript, subscript) ->
+            [   yield (baseAtom, BaseAtom)
+                match superscript with
+                | ValueSome a -> yield (a, Superscript)
+                | ValueNone -> ()
+                match subscript with
+                | ValueSome a -> yield (a, Subscript)
+                | ValueNone -> ()
+            ]
+        | MathAtom.Delimited(_,b,_)
+        | MathAtom.Decorated(_,b)
+            -> [ (b, BaseAtom) ]
+        | MathAtom.Number _
+        | MathAtom.Variable _
+        | MathAtom.UnaryOperator _
+        | MathAtom.Ordinary _
+        | MathAtom.BinaryOperator _
+        | MathAtom.BinaryRelationalOperator _
+        | MathAtom.OpenBracket _
+        | MathAtom.CloseBracket _
+        | MathAtom.Punctuation _
+        | MathAtom.PlaceholderInput
+        | MathAtom.Primes _
+            -> []
 
 /// Describes the position of a subAtom inside an Atom
 [<RequireQualifiedAccess>]
@@ -87,3 +141,11 @@ type AtomIndex =
             AtomIndexStep.SubAtom(a,ais) |> ValueOption.bind (fun innerAtom ->
                 AtomIndex.SubAtom(innerAtom, subIndex)
                 )
+    /// Useful for index tests
+    static member AllSubAtomsWithAtomIndices(ma:MathAtom) =
+        [   yield ma, Self
+            for (subAtom, ais) in AtomIndexStep.SubAtomsWithAtomIndexSteps ma do
+                yield!
+                    AtomIndex.AllSubAtomsWithAtomIndices subAtom
+                    |> List.map (fun (a,ai) -> a, AtomIndexStep(ais,ai))
+        ]
