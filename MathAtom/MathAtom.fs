@@ -15,7 +15,7 @@ type Decoration =
     | Accented of Accent
 
 [<RequireQualifiedAccess>]
-type MathAtom =
+type MathAtom = // TODO replace chars with enums
     | Row of MathAtom list
     (*| Ordinary = Number | Variable | UnaryOperator*)
     | Number of string
