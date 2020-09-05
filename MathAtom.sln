@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30413.136
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "MathDisplay", "MathDisplay\MathDisplay.fsproj", "{3CA69605-37D4-46F0-AEC8-252DF7F9A2FE}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "LaTeXParser", "MathDisplay\LaTeXParser.fsproj", "{3CA69605-37D4-46F0-AEC8-252DF7F9A2FE}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "MathDisplay.Tests", "MathDisplay.Tests\MathDisplay.Tests.fsproj", "{48263804-2B36-4BC0-A902-005E7951DFFC}"
 EndProject

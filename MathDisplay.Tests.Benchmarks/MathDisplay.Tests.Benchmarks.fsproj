@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MathDisplay\MathDisplay.fsproj" />
+    <ProjectReference Include="..\MathDisplay\LaTeXParser.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
